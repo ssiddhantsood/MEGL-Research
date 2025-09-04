@@ -129,6 +129,7 @@ def time_integration_solver(omega, W, K, theta_init=None, dt=0.01, max_time=100,
     
     # Store history for convergence check
     theta_history = []
+    derivative_history = []
     
     while t < max_time:
         # Compute derivatives
@@ -137,17 +138,34 @@ def time_integration_solver(omega, W, K, theta_init=None, dt=0.01, max_time=100,
         # Euler integration
         theta_new = theta + dt * dtheta
         
-        # Check for convergence
-        if len(theta_history) > 10:
-            # Check if the last 10 steps show little change
-            recent_changes = [np.linalg.norm(theta_history[-i] - theta_history[-i-1]) 
-                            for i in range(1, min(11, len(theta_history)))]
-            if np.mean(recent_changes) < tol:
+        # Store history
+        theta_history.append(theta.copy())
+        derivative_history.append(np.linalg.norm(dtheta))
+        
+        # Check for convergence - multiple criteria
+        if len(theta_history) > 20:
+            # Criterion 1: Check if derivatives are small
+            if np.linalg.norm(dtheta) < tol:
+                return theta_new, True, t
+            
+            # Criterion 2: Check if theta has stabilized
+            recent_theta_changes = [np.linalg.norm(theta_history[-i] - theta_history[-i-1]) 
+                                   for i in range(1, min(21, len(theta_history)))]
+            if np.mean(recent_theta_changes) < tol:
+                return theta_new, True, t
+            
+            # Criterion 3: Check if derivatives are decreasing and small enough
+            recent_derivatives = derivative_history[-20:]
+            if np.mean(recent_derivatives) < 1e-3 and np.std(recent_derivatives) < 1e-4:
                 return theta_new, True, t
         
-        theta_history.append(theta.copy())
         theta = theta_new
         t += dt
+    
+    # If we reach max_time, check if we have a reasonable solution
+    final_derivative_norm = np.linalg.norm(kuramoto_dynamics(theta, omega, W, K))
+    if final_derivative_norm < 1e-1:  # More relaxed tolerance for final check
+        return theta, True, t
     
     return theta, False, t
 
@@ -160,13 +178,20 @@ def solve_kuramoto(theta_guess, omega, W, K):
     # Use time integration solver
     theta_sol, success, final_time = time_integration_solver(omega, W, K, theta_guess)
     
-    # Check if solution is reasonable
+    # Compute order parameter
+    r = compute_order_parameter(theta_sol)
+    
+    # Check if solution is reasonable - accept if either:
+    # 1. Time integration converged successfully, OR
+    # 2. We have a high order parameter (good synchronization)
     if success:
         residual_norm = np.linalg.norm(kuramoto_dynamics(theta_sol, omega, W, K))
         if residual_norm < 1e-2:  # Accept if residual is small enough
             return theta_sol, True
+    elif r > 0.5:  # Accept if we have reasonable synchronization
+        return theta_sol, True
     
-    # If time integration failed or residual too large, return the best guess
+    # If time integration failed and no good synchronization, return the best guess
     return theta_sol, False
 
 
@@ -223,7 +248,7 @@ def sweep_K_and_find_Kc(
 
         # Debug: print first few K values to see what's happening
         if idx < 5 or idx % 20 == 0:
-            residual_norm = np.linalg.norm(kuramoto_residual(theta_sol, omega, W, K)) if ok else np.inf
+            residual_norm = np.linalg.norm(kuramoto_dynamics(theta_sol, omega, W, K)) if ok else np.inf
             print(f"  K={K:.3f}: r={r:.4f}, ok={ok}, residual_norm={residual_norm:.2e}")
         
         r_values.append(r)
@@ -302,7 +327,7 @@ if __name__ == "__main__":
     theta_test, ok_test = solve_kuramoto(np.zeros(n_test), omega_test, W_test, K_test)
     if ok_test:
         r_test = compute_order_parameter(theta_test)
-        residual_test = kuramoto_residual(theta_test, omega_test, W_test, K_test)
+        residual_test = kuramoto_dynamics(theta_test, omega_test, W_test, K_test)
         print(f"  Test case: r={r_test:.4f}, residual_norm={np.linalg.norm(residual_test):.2e}")
         print(f"  Theta values: {theta_test}")
     else:

@@ -441,6 +441,104 @@ def test_time_integration_vs_fsolve():
     
     print()
 
+def test_main_simulation_parameters():
+    """Test time integration with the exact parameters from main simulation"""
+    print("=== Testing Main Simulation Parameters ===")
+    
+    def kuramoto_dynamics(theta, omega, W, K):
+        """Compute the time derivatives for Kuramoto system"""
+        n = len(theta)
+        dtheta = np.zeros(n)
+        for i in range(n):
+            coupling = 0.0
+            for j in range(n):
+                if W[i,j] > 0:
+                    coupling += W[i,j] * np.sin(theta[j] - theta[i])
+            dtheta[i] = omega[i] + K * coupling
+        return dtheta
+    
+    def time_integration_solver(omega, W, K, theta_init=None, dt=0.01, max_time=100, tol=1e-6):
+        """Time integration solver for Kuramoto steady state"""
+        n = len(omega)
+        if theta_init is None:
+            theta_init = np.zeros(n)
+        
+        theta = theta_init.copy()
+        t = 0.0
+        
+        # Store history for convergence check
+        theta_history = []
+        
+        while t < max_time:
+            # Compute derivatives
+            dtheta = kuramoto_dynamics(theta, omega, W, K)
+            
+            # Euler integration
+            theta_new = theta + dt * dtheta
+            
+            # Check for convergence
+            if len(theta_history) > 10:
+                # Check if the last 10 steps show little change
+                recent_changes = [np.linalg.norm(theta_history[-i] - theta_history[-i-1]) 
+                                for i in range(1, min(11, len(theta_history)))]
+                if np.mean(recent_changes) < tol:
+                    return theta_new, True, t
+            
+            theta_history.append(theta.copy())
+            theta = theta_new
+            t += dt
+        
+        return theta, False, t
+    
+    def compute_order_parameter(theta):
+        """Compute the Kuramoto order parameter"""
+        return np.abs(np.exp(1j * theta).mean())
+    
+    # Use exact parameters from main simulation
+    n = 12
+    p = 0.25
+    capacity = 1.0
+    
+    # Generate the same graph
+    np.random.seed(7)  # Same seed as main simulation
+    W = np.random.choice([0, 1], size=(n, n), p=[1-p, p])
+    W = (W + W.T) / 2  # Make symmetric
+    np.fill_diagonal(W, 0)  # No self-loops
+    
+    # Use exact omega from main simulation
+    P = 0.2
+    omega = np.zeros(n, dtype=float)
+    idx = np.arange(n)
+    np.random.shuffle(idx)
+    positive_count = int(0.7 * n)
+    omega[idx[:positive_count]] = +P
+    omega[idx[positive_count:]] = -P
+    omega = omega + 0.02 * np.random.randn(n)
+    
+    print(f"omega range: [{omega.min():.3f}, {omega.max():.3f}]")
+    print(f"W has {np.sum(W > 0)} edges")
+    print(f"omega values: {omega}")
+    
+    # Test with different K values
+    K_values = [0.05, 0.1, 0.5, 1.0, 2.0]
+    
+    for K in K_values:
+        print(f"\nTesting K = {K}")
+        theta_sol, success, final_time = time_integration_solver(omega, W, K)
+        r = compute_order_parameter(theta_sol)
+        residual_norm = np.linalg.norm(kuramoto_dynamics(theta_sol, omega, W, K))
+        
+        print(f"  Success: {success}")
+        print(f"  Final time: {final_time:.2f}")
+        print(f"  Order parameter r: {r:.4f}")
+        print(f"  Residual norm: {residual_norm:.2e}")
+        
+        if success and residual_norm < 1e-2:
+            print("  ✓ Good solution!")
+        print()
+    
+    print()
+
 if __name__ == "__main__":
     test_scipy_version()
     test_simple_fsolve()
@@ -449,4 +547,5 @@ if __name__ == "__main__":
     test_kuramoto_large()
     test_custom_solver()
     test_time_integration_solver()
-    test_time_integration_vs_fsolve() 
+    test_time_integration_vs_fsolve()
+    test_main_simulation_parameters() 
