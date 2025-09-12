@@ -1,0 +1,18 @@
+{
+  "label": "default_trial_0",
+  "n": 12,
+  "p": 0.3,
+  "w_low": 1.0,
+  "w_high": 1.0,
+  "omega_mean": 0.0,
+  "omega_std": 1.0,
+  "K_start": 15.0,
+  "K_min": 0.05,
+  "K_step": 0.1,
+  "r_thresh": 0.7,
+  "edge_mode": "remove",
+  "remove_mode": "random",
+  "add_weight": 1.0,
+  "seed": null,
+  "baseline_Kc": 0.6000000000000365
+}
