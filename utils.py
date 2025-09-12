@@ -348,6 +348,47 @@ def draw_network_graph(W: np.ndarray, omega: np.ndarray, path: str,
     plt.savefig(path, dpi=150, bbox_inches="tight")
     plt.close()
 
+def plot_r_vs_K_overlay(
+    K_base: np.ndarray, r_base: np.ndarray,
+    K_new: np.ndarray, r_new: np.ndarray,
+    out_path: str,
+    Kc_base: Optional[float] = None,
+    Kc_new: Optional[float] = None,
+    title: str = "Baseline vs. modified r(K)",
+    r_threshold: float = 0.7,
+    labels: Tuple[str, str] = ("baseline", "modified"),
+):
+    """
+    Overlay r(K) for a modified network on top of the baseline curve.
+    Handles different K grids by just plotting both series as-is.
+    """
+    if (K_base is None or len(K_base) == 0) or (K_new is None or len(K_new) == 0):
+        return
+    _ensure_dir(os.path.dirname(out_path) or ".")
+
+    plt.figure(figsize=(8, 6))
+    # baseline
+    plt.plot(K_base, r_base, "o-", linewidth=2, markersize=4, label=labels[0])
+    if Kc_base is not None:
+        plt.axvline(Kc_base, linestyle="--", color="g", alpha=0.6, label=f"{labels[0]} Kc ≈ {Kc_base:.3f}")
+    # modified
+    plt.plot(K_new, r_new, "s--", linewidth=2, markersize=4, label=labels[1])
+    if Kc_new is not None:
+        plt.axvline(Kc_new, linestyle=":", color="m", alpha=0.7, label=f"{labels[1]} Kc ≈ {Kc_new:.3f}")
+
+    if r_threshold is not None:
+        plt.axhline(r_threshold, linestyle="--", color="r", alpha=0.35, label=f"threshold {r_threshold}")
+
+    plt.xlabel("Coupling strength K")
+    plt.ylabel("Order parameter r")
+    plt.title(title)
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close()
+
+
 def plot_r_vs_K(K_values: np.ndarray, r_values: np.ndarray, out_path: str,
                 Kc: Optional[float] = None, title: str = "Synchronization curve",
                 r_threshold: float = 0.7):
@@ -414,24 +455,30 @@ def braess_scan_remove_edges(
 ) -> List[Dict]:
     """
     Compute baseline Kc, then remove edges one-by-one (keeping graph connected),
-    recompute Kc, and SAVE per-edge r(K) plots + network snapshots if outdir is given.
+    recompute Kc, and SAVE per-edge r(K) plots + baseline overlays if outdir is given.
     Returns result rows with uniform keys.
     """
     if rng is None:
         rng = np.random.default_rng()
     if outdir is not None:
-        _ensure_dir(outdir)
+        os.makedirs(outdir, exist_ok=True)
 
-    # Baseline
+    # Baseline (center omega defensively)
     omega_c = _center_omega(omega)
     base_Kc, base_Ks, base_Rs = continuation_descend_K(
         omega_c, W, K_start=K_start, K_min=K_min, K_step=K_step, r_thresh=r_thresh, rng=rng
     )
     if outdir is not None:
-        plot_r_vs_K(base_Ks, base_Rs, os.path.join(outdir, "r_vs_K_baseline.png"),
-                    Kc=base_Kc, title="Baseline r(K)", r_threshold=r_thresh)
-        draw_network_graph(W, omega, os.path.join(outdir, "network_baseline.png"),
-                           layout=layout, title="Baseline network")
+        plot_r_vs_K(
+            base_Ks, base_Rs,
+            out_path=os.path.join(outdir, "r_vs_K_baseline.png"),
+            Kc=base_Kc, title="Baseline r(K)", r_threshold=r_thresh
+        )
+        draw_network_graph(
+            W, omega,
+            path=os.path.join(outdir, "network_baseline.png"),
+            layout=layout, title="Baseline network"
+        )
 
     if base_Kc is None:
         return [{
@@ -473,17 +520,38 @@ def braess_scan_remove_edges(
 
         if outdir is not None:
             i, j = e
-            plot_r_vs_K(Ks2, Rs2, os.path.join(outdir, f"r_vs_K_remove_{i}_{j}.png"),
-                        Kc=Kc2, title=f"Remove edge {e}: r(K)", r_threshold=r_thresh)
-            draw_network_graph(W2, omega, os.path.join(outdir, f"network_remove_{i}_{j}.png"),
-                               layout=layout, title=f"Network after removing {e}",
-                               highlight_edge=None)
+            # Modified-only curve
+            plot_r_vs_K(
+                Ks2, Rs2,
+                out_path=os.path.join(outdir, f"r_vs_K_remove_{i}_{j}.png"),
+                Kc=Kc2, title=f"Remove edge {e}: r(K)", r_threshold=r_thresh
+            )
+            # Overlay with baseline
+            plot_r_vs_K_overlay(
+                base_Ks, base_Rs,
+                Ks2, Rs2,
+                out_path=os.path.join(outdir, f"r_vs_K_remove_{i}_{j}_overlay.png"),
+                Kc_base=base_Kc, Kc_new=Kc2,
+                title=f"Overlay: baseline vs remove {e}",
+                r_threshold=r_thresh,
+                labels=("baseline", f"remove {e}")
+            )
+            # Snapshot of modified network
+            draw_network_graph(
+                W2, omega,
+                path=os.path.join(outdir, f"network_remove_{i}_{j}.png"),
+                layout=layout, title=f"Network after removing {e}",
+                highlight_edge=None
+            )
 
     if outdir is not None:
-        plot_edge_deltas(rows, os.path.join(outdir, "edge_deltas_remove.png"),
-                         title="ΔKc for removed edges")
+        plot_edge_deltas(
+            rows, os.path.join(outdir, "edge_deltas_remove.png"),
+            title="ΔKc for removed edges (negative ⇒ improvement)"
+        )
 
     return rows
+
 
 
 def braess_scan_add_edges(
@@ -500,12 +568,13 @@ def braess_scan_add_edges(
 ) -> List[Dict]:
     """
     Add each missing edge (weight = add_weight), recompute Kc, and SAVE per-edge r(K) plots
-    + network snapshots if outdir is given. Baseline is the original W.
+    + baseline overlays if outdir is given. Baseline is the original W.
+    'Braess' here means delta > 0 (adding an edge worsens synchronizability).
     """
     if rng is None:
         rng = np.random.default_rng()
     if outdir is not None:
-        _ensure_dir(outdir)
+        os.makedirs(outdir, exist_ok=True)
 
     # Baseline
     omega_c = _center_omega(omega)
@@ -513,11 +582,16 @@ def braess_scan_add_edges(
         omega_c, W, K_start=K_start, K_min=K_min, K_step=K_step, r_thresh=r_thresh, rng=rng
     )
     if outdir is not None:
-        # If remove+add are both called, baseline file may already exist; it's fine to overwrite.
-        plot_r_vs_K(base_Ks, base_Rs, os.path.join(outdir, "r_vs_K_baseline.png"),
-                    Kc=base_Kc, title="Baseline r(K)", r_threshold=r_thresh)
-        draw_network_graph(W, omega, os.path.join(outdir, "network_baseline.png"),
-                           layout=layout, title="Baseline network")
+        plot_r_vs_K(
+            base_Ks, base_Rs,
+            out_path=os.path.join(outdir, "r_vs_K_baseline.png"),
+            Kc=base_Kc, title="Baseline r(K)", r_threshold=r_thresh
+        )
+        draw_network_graph(
+            W, omega,
+            path=os.path.join(outdir, "network_baseline.png"),
+            layout=layout, title="Baseline network"
+        )
 
     if base_Kc is None:
         return [{
@@ -538,7 +612,7 @@ def braess_scan_add_edges(
             omega_c, W2, K_start=K_start, K_min=K_min, K_step=K_step, r_thresh=r_thresh, rng=rng
         )
         delta = None if Kc2 is None else float(Kc2 - base_Kc)
-        # Here, "Braess" in the classical sense is delta > 0 (adding an edge harms synchronizability)
+        # For additions, paradox means delta > 0
         is_braess = (delta is not None) and (delta > 1e-3)
 
         rows.append({
@@ -550,14 +624,281 @@ def braess_scan_add_edges(
         })
 
         if outdir is not None:
-            plot_r_vs_K(Ks2, Rs2, os.path.join(outdir, f"r_vs_K_add_{i}_{j}.png"),
-                        Kc=Kc2, title=f"Add edge {(i,j)}: r(K)", r_threshold=r_thresh)
-            draw_network_graph(W2, omega, os.path.join(outdir, f"network_add_{i}_{j}.png"),
-                               layout=layout, title=f"Network after adding {(i,j)}",
-                               highlight_edge=(i, j), highlight_color="orange")
+            # Modified-only curve
+            plot_r_vs_K(
+                Ks2, Rs2,
+                out_path=os.path.join(outdir, f"r_vs_K_add_{i}_{j}.png"),
+                Kc=Kc2, title=f"Add edge {(i,j)}: r(K)", r_threshold=r_thresh
+            )
+            # Overlay with baseline
+            plot_r_vs_K_overlay(
+                base_Ks, base_Rs,
+                Ks2, Rs2,
+                out_path=os.path.join(outdir, f"r_vs_K_add_{i}_{j}_overlay.png"),
+                Kc_base=base_Kc, Kc_new=Kc2,
+                title=f"Overlay: baseline vs add {(i,j)}",
+                r_threshold=r_thresh,
+                labels=("baseline", f"add {(i,j)}")
+            )
+            # Snapshot of modified network (highlight new edge)
+            draw_network_graph(
+                W2, omega,
+                path=os.path.join(outdir, f"network_add_{i}_{j}.png"),
+                layout=layout, title=f"Network after adding {(i,j)}",
+                highlight_edge=(i, j), highlight_color="orange"
+            )
 
     if outdir is not None:
-        plot_edge_deltas(rows, os.path.join(outdir, "edge_deltas_add.png"),
-                         title="ΔKc for added edges (positive ⇒ paradox)")
+        plot_edge_deltas(
+            rows, os.path.join(outdir, "edge_deltas_add.png"),
+            title="ΔKc for added edges (positive ⇒ paradox)"
+        )
 
     return rows
+
+def kuramoto_jacobian(theta: np.ndarray, W: np.ndarray, K: float) -> np.ndarray:
+    """
+    Jacobian J of the Kuramoto steady-state dynamics at a fixed point theta.
+    dtheta_i/dt = omega_i + K * sum_j W_ij * sin(theta_j - theta_i)
+    J_ij = ∂(dtheta_i/dt)/∂theta_j.
+    """
+    n = len(theta)
+    J = np.zeros((n, n), dtype=float)
+
+    # Off-diagonal: K * W_ij * cos(theta_j - theta_i)
+    for i in range(n):
+        ti = theta[i]
+        for j in range(n):
+            wij = W[i, j]
+            if i != j and wij != 0.0:
+                J[i, j] = K * wij * np.cos(theta[j] - ti)
+
+    # Diagonal: -sum_{j≠i} off-diagonals (graph Laplacian structure)
+    for i in range(n):
+        J[i, i] = -np.sum(J[i, :])  # ensures row sums ~ 0 (gauge mode)
+
+    # Numerical symmetrization for stability (should already be symmetric)
+    J = 0.5 * (J + J.T)
+    return J
+
+
+def linear_stability(theta: np.ndarray, W: np.ndarray, K: float,
+                     drop_zero_mode: bool = True,
+                     zero_tol: float = 1e-9) -> dict:
+    """
+    Compute eigen-spectrum of Jacobian at (theta, W, K).
+    Returns:
+      {
+        'eigvals': np.ndarray (sorted ascending),
+        'max_real': float (largest real part excluding gauge mode if drop_zero_mode),
+        'num_unstable': int (# eigenvalues with real part > 0 excluding gauge mode)
+      }
+    """
+    J = kuramoto_jacobian(theta, W, K)
+    # J is symmetric -> real spectrum
+    eigvals = np.linalg.eigvalsh(J)  # ascending
+    ev = eigvals.copy()
+
+    if drop_zero_mode and ev.size > 0:
+        # remove the eigenvalue closest to 0 (gauge mode from rotational symmetry)
+        idx0 = int(np.argmin(np.abs(ev)))
+        ev = np.delete(ev, idx0)
+
+    if ev.size == 0:
+        max_real = 0.0
+        num_unstable = 0
+    else:
+        max_real = float(np.max(ev))
+        num_unstable = int(np.sum(ev > zero_tol))
+
+    return {
+        "eigvals": eigvals,         # full spectrum incl. gauge mode
+        "max_real": max_real,       # gauge mode excluded
+        "num_unstable": num_unstable
+    }
+
+def sweep_linear_stability(
+    omega: np.ndarray,
+    W: np.ndarray,
+    K_values: np.ndarray,
+    rng: Optional[np.random.Generator] = None,
+    return_thetas: bool = False,
+    include_eigs: bool = False,
+) -> dict:
+    """
+    For each K in K_values (any order), lock a fixed point and compute stability.
+    Returns a dict with arrays sorted by ascending K:
+      {
+        'K': np.ndarray,
+        'max_real': np.ndarray,
+        'num_unstable': np.ndarray,
+        'theta_list': Optional[List[np.ndarray]],
+        'eigvals_list': Optional[List[np.ndarray]],
+      }
+    Notes:
+      - Internally follows a descending-K warm start (robust), then reorders to ascending K.
+      - Works even if your baseline continuation didn’t store thetas.
+    """
+    if rng is None:
+        rng = np.random.default_rng()
+    K_values = np.asarray(K_values, dtype=float)
+    if K_values.ndim != 1 or K_values.size == 0:
+        return {"K": np.array([]), "max_real": np.array([]), "num_unstable": np.array([])}
+
+    # Work in co-rotating frame to ensure solvability
+    omega_c = _center_omega(omega)
+
+    # Follow descending K for robust warm starts
+    K_desc = np.sort(K_values)[::-1]
+    out = []
+    theta = None
+
+    # Lock first K
+    K0 = float(K_desc[0])
+    theta, ok, _ = solve_locked(omega_c, W, K0, theta0=None, retries=3, rng=rng)
+    if not ok:
+        theta0 = _laplacian_initial_guess(omega_c, W, K0)
+        theta, ok, _ = solve_locked(omega_c, W, K0, theta0=theta0, retries=3, rng=rng)
+        if not ok:
+            # Give up gracefully: empty result
+            return {"K": np.array([]), "max_real": np.array([]), "num_unstable": np.array([])}
+
+    # Walk the rest
+    for K in K_desc:
+        theta, ok, _ = solve_locked(omega_c, W, K, theta0=theta, retries=2, rng=rng)
+        if not ok:
+            # try a fresh linearized seed at this K
+            theta0 = _laplacian_initial_guess(omega_c, W, K)
+            theta, ok, _ = solve_locked(omega_c, W, K, theta0=theta0, retries=2, rng=rng)
+        if not ok:
+            # No fixed point found: record NaNs for this K
+            entry = {"K": float(K), "max_real": np.nan, "num_unstable": np.nan}
+            if return_thetas: entry["theta"] = None
+            if include_eigs: entry["eigvals"] = None
+            out.append(entry)
+            continue
+
+        stab = linear_stability(theta, W, K, drop_zero_mode=True)
+        entry = {
+            "K": float(K),
+            "max_real": stab["max_real"],
+            "num_unstable": stab["num_unstable"],
+        }
+        if return_thetas:
+            entry["theta"] = theta.copy()
+        if include_eigs:
+            entry["eigvals"] = stab["eigvals"].copy()
+        out.append(entry)
+
+    # Reorder to ascending K
+    out_sorted = sorted(out, key=lambda d: d["K"])
+    K_asc = np.array([d["K"] for d in out_sorted], dtype=float)
+    max_real = np.array([d["max_real"] for d in out_sorted], dtype=float)
+    num_unst = np.array([d["num_unstable"] for d in out_sorted], dtype=float)
+
+    result = {"K": K_asc, "max_real": max_real, "num_unstable": num_unst}
+    if return_thetas:
+        result["theta_list"] = [d.get("theta", None) for d in out_sorted]
+    if include_eigs:
+        result["eigvals_list"] = [d.get("eigvals", None) for d in out_sorted]
+    return result
+
+
+def plot_linear_stability(
+    K: np.ndarray,
+    max_real: np.ndarray,
+    out_path: str,
+    bifurcations: Optional[List[dict]] = None,
+    title: str = "Linear stability: max Re(λ(J)) vs K"
+):
+    """Plot max real-part eigenvalue vs K and mark detected bifurcations."""
+    if K is None or len(K) == 0:
+        return
+    _ensure_dir(os.path.dirname(out_path) or ".")
+    plt.figure(figsize=(8, 6))
+    plt.plot(K, max_real, "o-", linewidth=2, markersize=4, label="max Re(λ(J))")
+    plt.axhline(0.0, color="r", linestyle="--", alpha=0.5, label="Re(λ)=0")
+    if bifurcations:
+        for ev in bifurcations:
+            Kb = ev.get("K_bif", None)
+            if Kb is not None:
+                plt.axvline(Kb, color="orange", linestyle=":", alpha=0.7)
+    plt.xlabel("K")
+    plt.ylabel("max Re(λ(J))")
+    plt.title(title)
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close()
+
+
+def save_stability_csv(K: np.ndarray, max_real: np.ndarray, num_unstable: np.ndarray, out_path: str):
+    """Save stability sweep as CSV with columns K, max_real, num_unstable."""
+    import pandas as pd
+    _ensure_dir(os.path.dirname(out_path) or ".")
+    pd.DataFrame({
+        "K": np.asarray(K, dtype=float),
+        "max_real": np.asarray(max_real, dtype=float),
+        "num_unstable": np.asarray(num_unstable, dtype=float),
+    }).to_csv(out_path, index=False)
+
+def detect_bifurcations_from_stability(
+    K: np.ndarray,
+    max_real: np.ndarray,
+    tol: float = 1e-6
+) -> List[dict]:
+    """
+    Detect bifurcation candidates as zero-crossings of the largest real part.
+    Returns a list of events:
+      [{'K_bif': float, 'type': 'eig_zero_cross', 'left': (K_i, m_i), 'right': (K_{i+1}, m_{i+1})}, ...]
+    """
+    K = np.asarray(K, dtype=float)
+    mr = np.asarray(max_real, dtype=float)
+    out = []
+    if K.size < 2:
+        return out
+
+    for i in range(len(K) - 1):
+        a, b = mr[i], mr[i + 1]
+        if np.isnan(a) or np.isnan(b):
+            continue
+        if (a > tol and b < -tol) or (a < -tol and b > tol) or (abs(a) <= tol) or (abs(b) <= tol):
+            # Linear interpolation for crossing if denom != 0
+            if (b - a) != 0:
+                t = (0.0 - a) / (b - a)
+                t = np.clip(t, 0.0, 1.0)
+                Kb = float(K[i] + t * (K[i + 1] - K[i]))
+            else:
+                Kb = float(0.5 * (K[i] + K[i + 1]))
+            out.append({
+                "K_bif": Kb,
+                "type": "eig_zero_cross",
+                "left": (float(K[i]), float(a)),
+                "right": (float(K[i + 1]), float(b)),
+            })
+    return out
+
+def save_eigs_long_csv(stab: dict, out_path: str):
+    """
+    Write eigenvalues for each K to a long CSV with columns (K, eig_index, eigval).
+    Requires sweep_linear_stability(..., include_eigs=True).
+    """
+    import pandas as pd, os
+    K = np.asarray(stab.get("K", []), dtype=float)
+    eigs_list = stab.get("eigvals_list", None)
+    if eigs_list is None or len(eigs_list) != len(K):
+        return
+    rows = []
+    for Ki, ev in zip(K, eigs_list):
+        if ev is None:
+            continue
+        ev = np.asarray(ev, dtype=float)
+        for j, val in enumerate(ev):
+            rows.append((float(Ki), int(j), float(val)))
+    if not rows:
+        return
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+    pd.DataFrame(rows, columns=["K", "eig_index", "eigval"]).to_csv(out_path, index=False)
+
+

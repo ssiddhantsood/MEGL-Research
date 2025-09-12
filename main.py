@@ -30,6 +30,32 @@ def run_once(args, seed=None, outdir=None, label="run"):
         r_thresh=args.r_thresh, rng=rng
     )
 
+    # ---- Linearization around fixed points along K_grid ----
+    if K_grid is not None and K_grid.size > 0:
+        # Get stability and eigenvalues (no Jacobians stored)
+        stab = sweep_linear_stability(
+            omega, W, K_values=K_grid, rng=rng,
+            include_eigs=True
+        )
+
+        # Bifurcations (zero-crossings of max real part)
+        bifs = detect_bifurcations_from_stability(stab["K"], stab["max_real"], tol=1e-6)
+
+        # Plot + CSV summaries (write to outdir, not trial_out)
+        if outdir:
+            plot_linear_stability(
+                stab["K"], stab["max_real"],
+                out_path=os.path.join(outdir, "linear_stability.png"),
+                bifurcations=bifs,
+                title="Linear stability: max Re(λ(J)) vs K (baseline)"
+            )
+            save_stability_csv(
+                stab["K"], stab["max_real"], stab["num_unstable"],
+                out_path=os.path.join(outdir, "linear_stability.csv")
+            )
+            # Optional: store full eigenvalues (one long CSV)
+            save_eigs_long_csv(stab, out_path=os.path.join(outdir, "eigs_long.csv"))
+
     # 3) Persist outputs (meta, curves, plots)
     if outdir:
         os.makedirs(outdir, exist_ok=True)
@@ -53,7 +79,6 @@ def run_once(args, seed=None, outdir=None, label="run"):
             pd.DataFrame({"K": K_grid, "r": r}).to_csv(
                 os.path.join(outdir, "r_vs_K.csv"), index=False
             )
-            # baseline plots (always try to make them)
             plot_r_vs_K(
                 K_grid, r,
                 out_path=os.path.join(outdir, "r_vs_K_baseline.png"),
@@ -61,6 +86,7 @@ def run_once(args, seed=None, outdir=None, label="run"):
                 title=f"Baseline r(K)  n={args.n}, p={args.p}, omega_std={args.omega_std}",
                 r_threshold=args.r_thresh
             )
+
         # network snapshot
         draw_network_graph(
             W, omega,
@@ -111,6 +137,7 @@ def run_once(args, seed=None, outdir=None, label="run"):
         "Kc": Kc, "K_grid": K_grid, "r": r,
         "rows_remove": rows_remove, "rows_add": rows_add
     }
+
 
 def load_runs_config(path: str):
     with open(path, "r") as f:
