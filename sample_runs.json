@@ -1,0 +1,30 @@
+{
+  "runs": [
+    {
+      "name": "n12_p0.3_std1.0_random",
+      "n": 12,
+      "p": 0.3,
+      "omega_std": 1.0,
+      "K_start": 15.0,
+      "K_min": 0.05,
+      "K_step": 0.1,
+      "r_thresh": 0.7,
+      "remove_mode": "random",
+      "trials": 1,
+      "seed": 1
+    },
+    {
+      "name": "n12_p0.4_std0.5_betweenness",
+      "n": 12,
+      "p": 0.4,
+      "omega_std": 0.5,
+      "K_start": 15.0,
+      "K_min": 0.05,
+      "K_step": 0.1,
+      "r_thresh": 0.7,
+      "remove_mode": "betweenness",
+      "trials": 1,
+      "seed": 2
+    }
+  ]
+}
