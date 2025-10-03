@@ -1,335 +1,223 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-predict_braess.py  — continuation-backed predictor
+predict_braess.py — continuation-backed predictor (augmented system version)
 
-This version avoids sweep_linear_stability and instead uses the same method
-as your "find braess" code: continuation_descend_K to get a robust Kc quickly.
-Then it locks a steady state at K≈Kc and computes dK/da (same math as before).
+We use the SAME Kc finder as your scan code:
+  U.continuation_descend_K  (co-rotating frame)
 
-Notes:
-- We work in the co-rotating frame (center omega) when finding Kc, matching utils.
-- For locking at Kc we use your U.solve_locked (warm-started with a Laplacian seed).
+Then we lock a steady state at K≈Kc with U.solve_locked (gauge θ0=0),
+form the augmented system
+
+    G(θ,v,K,a) = [F(θ,K,a); J(θ,K,a)v; vᵀv - 1; θ₀]
+
+Differentiate wrt a:
+
+    (∂G/∂x) x_a + ∂G/∂a = 0
+
+Solve least-squares for x_a = [dθ/da, dv/da, dK/da],
+then extract dK/da = x_a[-1].
+
+All intermediate arrays are stored in `info` for traceability.
 """
 
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Tuple, Optional, Dict, Any
+from typing import Optional, Dict, Any
+import json
 import numpy as np
 import scipy.linalg as la
-from scipy.optimize import least_squares
-
 import utils as U
 
 
-# ---------- small helpers ----------
-def edge_matrix(n: int, p: int, q: int, w_add: float = 1.0) -> np.ndarray:
-    E = np.zeros((n, n), dtype=float)
-    if p == q:
-        raise ValueError("Edge must connect two distinct nodes.")
-    E[p, q] = float(w_add)
-    E[q, p] = float(w_add)
-    return E
+# ---------------------- JSON helper ----------------------
+def _to_jsonable(x):
+    if isinstance(x, np.ndarray):
+        return x.tolist()
+    if isinstance(x, (np.floating, np.integer)):
+        return float(x)
+    if isinstance(x, (list, tuple)):
+        return [_to_jsonable(v) for v in x]
+    if isinstance(x, dict):
+        return {str(k): _to_jsonable(v) for k, v in x.items()}
+    return x
 
 
-def F_theta(theta: np.ndarray, K: float, W: np.ndarray, omega: np.ndarray) -> np.ndarray:
-    dth = theta[np.newaxis, :] - theta[:, np.newaxis]
-    S = W * np.sin(dth)
-    return omega + K * S.sum(axis=1)
-
-
-def H_residual(theta: np.ndarray,
-               v: np.ndarray,
-               K: float,
-               a: float,
-               W0: np.ndarray,
-               E: np.ndarray,
-               omega: np.ndarray) -> np.ndarray:
-    W = W0 + a * E
-    F = F_theta(theta, K, W, omega)           # n
-    J = U.kuramoto_jacobian(theta, W, K)      # n×n (symmetric)
-    eig_block = J @ v                          # n
-    norm_block = np.array([np.dot(v, v) - 1.0])
-    gauge_block = np.array([theta[0]])
-    return np.concatenate([F, eig_block, norm_block, gauge_block], axis=0)
-
-
-def dF_dtheta(theta: np.ndarray, K: float, W: np.ndarray) -> np.ndarray:
-    return U.kuramoto_jacobian(theta, W, K)
-
-def dF_dK(theta: np.ndarray, W: np.ndarray) -> np.ndarray:
-    dth = theta[np.newaxis, :] - theta[:, np.newaxis]
-    S = W * np.sin(dth)
-    return S.sum(axis=1)
-
-def dF_da(theta: np.ndarray, K: float, E: np.ndarray) -> np.ndarray:
-    dth = theta[np.newaxis, :] - theta[:, np.newaxis]
-    S = E * np.sin(dth)
-    return K * S.sum(axis=1)
-
-def dJv_dtheta_FD(theta: np.ndarray, v: np.ndarray, W: np.ndarray, K: float, eps: float = 1e-6) -> np.ndarray:
-    """Finite-diff columns for ∂(Jv)/∂θ (simple & robust)."""
-    n = len(theta)
-    J = U.kuramoto_jacobian(theta, W, K)
-    base = J @ v
-    cols = np.zeros((n, n), dtype=float)
-    for k in range(n):
-        th = theta.copy(); th[k] += eps
-        Jk = U.kuramoto_jacobian(th, W, K)
-        cols[:, k] = (Jk @ v - base) / eps
-    return cols
-
-def dJv_dv(theta: np.ndarray, W: np.ndarray, K: float) -> np.ndarray:
-    return U.kuramoto_jacobian(theta, W, K)
-
-def dJv_dK(theta: np.ndarray, W: np.ndarray, K: float) -> np.ndarray:
-    J = U.kuramoto_jacobian(theta, W, K)
-    if abs(K) < 1e-14:
-        dK = 1e-6
-        Jp = U.kuramoto_jacobian(theta, W, K + dK)
-        return ((Jp - J) @ np.ones(len(theta))) / dK  # fallback; not usually used
-    return (J @ np.ones(len(theta))) / K  # we only need the vector (J/K) * v, but we reshape later
-
-
-def dJv_dK_vec(theta: np.ndarray, W: np.ndarray, K: float, v: np.ndarray) -> np.ndarray:
-    J = U.kuramoto_jacobian(theta, W, K)
-    if abs(K) < 1e-14:
-        dK = 1e-6
-        Jp = U.kuramoto_jacobian(theta, W, K + dK)
-        return ((Jp - J) @ v) / dK
-    return (J @ v) / K
-
-def dJv_da(theta: np.ndarray, E: np.ndarray, K: float, v: np.ndarray) -> np.ndarray:
-    Ja = U.kuramoto_jacobian(theta, E, K)
-    return Ja @ v
-
-
-# ---------- continuation-backed critical solve ----------
+# ---------------------- dataclass ------------------------
 @dataclass
-class CriticalSolution:
-    theta: np.ndarray
-    v: np.ndarray
-    K: float
-    a: float
-    res_norm: float
-    Kc_from_continuation: float
-
-def _kc_via_continuation(W0: np.ndarray,
-                         omega: np.ndarray,
-                         K_start: float,
-                         K_min: float,
-                         K_step: float,
-                         r_thresh: float) -> float:
-    """Use the same robust Kc finder as your scan pipeline."""
-    omega_c = U._center_omega(omega)
-    Kc, Ks, Rs = U.continuation_descend_K(
-        omega_c, W0, K_start=K_start, K_min=K_min, K_step=K_step,
-        r_thresh=r_thresh, rng=None
-    )
-    if Kc is None:
-        # fall back to argmax R if threshold never hit
-        if len(Ks) == 0:
-            raise RuntimeError("continuation_descend_K returned no points")
-        Kc = float(Ks[np.argmax(Rs)])
-    return float(Kc)
-
-def _laplacian_seed(omega: np.ndarray, W: np.ndarray, K: float) -> np.ndarray:
-    return U._laplacian_initial_guess(U._center_omega(omega), W, K)
-
-def solve_critical_point_continuation(W0: np.ndarray,
-                                      omega: np.ndarray,
-                                      K_start: float,
-                                      K_min: float,
-                                      K_step: float,
-                                      r_thresh: float,
-                                      a_value: float = 0.0,
-                                      K_guess_override: Optional[float] = None) -> CriticalSolution:
-    """
-    Get Kc via continuation (or override if provided), lock a fixed point at ~Kc,
-    then refine (theta, v, K) by minimizing the augmented residual.
-    """
-    n = W0.shape[0]
-    # 1) Kc via continuation (or use override)
-    Kc = float(K_guess_override) if K_guess_override is not None else _kc_via_continuation(
-        W0, omega, K_start, K_min, K_step, r_thresh
-    )
-
-    # 2) Lock at Kc
-    omega_c = U._center_omega(omega)
-    theta0 = _laplacian_seed(omega, W0, Kc)
-    theta, ok, _ = U.solve_locked(omega_c, W0, Kc, theta0=theta0, retries=2)
-    if not ok:
-        # try a slightly larger K to get a good fixed point, then come back
-        theta, ok, _ = U.solve_locked(omega_c, W0, Kc * 1.05, theta0=None, retries=3)
-        if not ok:
-            raise RuntimeError("Failed to lock a steady state near Kc.")
-
-    theta -= theta[0]  # gauge fix for initial iterate
-
-    # 3) Build initial eigenvector v from J(θ,K)
-    J0 = U.kuramoto_jacobian(theta, W0, Kc)
-    eigvals, eigvecs = la.eigh(J0)
-    jmin = int(np.argmin(np.abs(eigvals)))
-    v0 = eigvecs[:, jmin].copy()
-    v0 /= la.norm(v0) + 1e-16
-
-    # 4) Refine (θ, v, K) with augmented residual (least squares)
-    x0 = np.concatenate([theta, v0, np.array([Kc])], axis=0)
-
-    def resfun(x: np.ndarray) -> np.ndarray:
-        th = x[:n]; vv = x[n:2*n]; KK = float(x[-1])
-        return H_residual(th, vv, KK, a_value, W0, np.zeros_like(W0), omega_c)
-
-    ls = least_squares(
-        resfun, x0, method="lm",
-        xtol=1e-8, ftol=1e-8, gtol=1e-8, max_nfev=800
-    )
-    x = ls.x
-    theta_star = x[:n]
-    v_star = x[n:2*n]; v_star /= la.norm(v_star) + 1e-16
-    K_star = float(x[-1])
-
-    res = resfun(x)
-    return CriticalSolution(theta=theta_star, v=v_star, K=K_star,
-                            a=a_value, res_norm=float(la.norm(res)),
-                            Kc_from_continuation=float(Kc))
-
-
-# ---------- sensitivity dK/da ----------
-@dataclass
-class SensitivityResult:
-    dK_da: float
-    details: Dict[str, Any]
-
-def compute_dK_da_at_solution(sol: CriticalSolution,
-                              W0: np.ndarray,
-                              E: np.ndarray,
-                              omega: np.ndarray) -> SensitivityResult:
-    n = len(sol.theta)
-    theta = sol.theta
-    v = sol.v
-    K = sol.K
-    a = sol.a
-    W = W0 + a * E
-    omega_c = U._center_omega(omega)
-
-    # Build H_x blocks
-    A_F_th = dF_dtheta(theta, K, W)                 # n×n
-    A_F_v  = np.zeros((n, n), dtype=float)          # n×n
-    A_F_K  = dF_dK(theta, W).reshape(n, 1)          # n×1
-
-    A_Jv_th = dJv_dtheta_FD(theta, v, W, K)         # n×n
-    A_Jv_v  = U.kuramoto_jacobian(theta, W, K)      # n×n
-    A_Jv_K  = dJv_dK_vec(theta, W, K, v).reshape(n, 1)
-
-    A_norm_th = np.zeros((1, n), dtype=float)
-    A_norm_v  = (2.0 * v).reshape(1, n)
-    A_norm_K  = np.zeros((1, 1), dtype=float)
-
-    e0 = np.zeros((1, n), dtype=float); e0[0, 0] = 1.0
-    A_gauge_th = e0
-    A_gauge_v  = np.zeros((1, n), dtype=float)
-    A_gauge_K  = np.zeros((1, 1), dtype=float)
-
-    Hx = np.block([
-        [A_F_th,    A_F_v,    A_F_K],
-        [A_Jv_th,   A_Jv_v,   A_Jv_K],
-        [A_norm_th, A_norm_v, A_norm_K],
-        [A_gauge_th,A_gauge_v,A_gauge_K],
-    ])
-
-    Ha_F  = dF_da(theta, K, E)
-    Ha_Jv = dJv_da(theta, E, K, v)
-    Ha = np.concatenate([Ha_F, Ha_Jv, np.array([0.0, 0.0])], axis=0)
-
-    x_a, *_ = la.lstsq(Hx, -Ha)     # least-squares solve
-    dK_da = float(x_a[-1])
-
-    details = {
-        "Hx_cond": float(np.linalg.cond(Hx)),
-        "residual_norm": float(np.linalg.norm(Hx @ x_a + Ha)),
-    }
-    return SensitivityResult(dK_da=dK_da, details=details)
-
-
-# ---------- public API ----------
-@dataclass
-class BraessPrediction:
-    dK_da: float
+class PredictResult:
     Kc: float
-    theta: np.ndarray
-    v: np.ndarray
+    dK_da: float
     info: Dict[str, Any]
 
+
+# ---------------------- system builders ------------------
+def F_theta(theta: np.ndarray, K: float, W: np.ndarray, omega: np.ndarray) -> np.ndarray:
+    """Steady-state equation: F_i = ω_i + K * Σ_j W_ij sin(θ_j - θ_i)."""
+    dth = theta[np.newaxis, :] - theta[:, np.newaxis]
+    return omega + K * (W * np.sin(dth)).sum(axis=1)
+
+
+def augmented_system(theta, v, K, a, W0, E, omega):
+    """G(θ,v,K,a) = [F; Jv; v^T v - 1; θ0]."""
+    n = len(theta)
+    W = W0 + a * E
+    F = F_theta(theta, K, W, omega)
+    J = U.kuramoto_jacobian(theta, W, K)
+    Jv = J @ v
+    norm = np.array([v @ v - 1.0])
+    gauge = np.array([theta[0]])
+    return np.concatenate([F, Jv, norm, gauge])
+
+
+def linearize_augmented(theta, v, K, a, W0, E, omega, eps=1e-6):
+    """Finite-diff Jacobians: Hx=∂G/∂x, Ha=∂G/∂a."""
+    n = len(theta)
+    x = np.concatenate([theta, v, [K]])
+
+    def G_of(x_vec, a_val):
+        th = x_vec[:n]
+        vv = x_vec[n:2*n]
+        KK = x_vec[-1]
+        return augmented_system(th, vv, KK, a_val, W0, E, omega)
+
+    G0 = G_of(x, a)
+
+    # ∂G/∂x by FD
+    Hx = np.zeros((len(G0), len(x)))
+    for j in range(len(x)):
+        x_pert = x.copy()
+        x_pert[j] += eps
+        Hx[:, j] = (G_of(x_pert, a) - G0) / eps
+
+    # ∂G/∂a
+    Ha = (G_of(x, a + eps) - G0) / eps
+
+    return Hx, Ha, G0
+
+
+def solve_dK_da(theta, v, K, a, W0, E, omega):
+    """Compute dK/da via augmented system linearization."""
+    Hx, Ha, G0 = linearize_augmented(theta, v, K, a, W0, E, omega)
+    x_a, *_ = la.lstsq(Hx, -Ha)
+    return float(x_a[-1]), x_a, Hx, Ha, G0
+
+
+# ---------------------- main predictor -------------------
 def predict_braess_add_edge(
     W0: np.ndarray,
     omega: np.ndarray,
-    p: int,
-    q: int,
-    w_add: float = 1.0,
-    r_thresh: float = 0.7,
-    K_start: float = 5.0,
-    K_min: float = 0.02,
-    K_step: float = 0.05,
-    K_guess: Optional[float] = None,   # if you want to inject CSV baseline_Kc, you can
-) -> BraessPrediction:
+    p: int, q: int, w_add: float = 1.0,
+    K_start: float = 5.0, K_min: float = 0.4, K_step: float = 0.01, r_thresh: float = 0.7,
+    K_guess: Optional[float] = None,
+    rng: Optional[np.random.Generator] = None,
+) -> PredictResult:
+    """
+    Predict dKc/da for adding one edge (p,q) with weight w_add,
+    using the full augmented system method.
+    """
+    if rng is None:
+        rng = np.random.default_rng()
     n = W0.shape[0]
-    if not (0 <= p < n and 0 <= q < n):
-        raise ValueError("p and q must be valid node indices.")
-    E = edge_matrix(n, p, q, w_add=w_add)
+    assert 0 <= p < n and 0 <= q < n and p != q
 
-    sol = solve_critical_point_continuation(
-        W0=W0, omega=omega,
-        K_start=K_start, K_min=K_min, K_step=K_step, r_thresh=r_thresh,
-        a_value=0.0,
-        K_guess_override=K_guess
+    # 1) Find baseline Kc
+    omega_c = U._center_omega(omega)
+    Kc_cont, K_grid, R_grid = U.continuation_descend_K(
+        omega_c, W0, K_start=K_start, K_min=K_min, K_step=K_step,
+        r_thresh=r_thresh, rng=rng
     )
+    if Kc_cont is None:
+        Kc_cont = float(K_grid[np.argmax(R_grid)]) if len(K_grid) else float(K_start)
+    Kc_used = float(K_guess) if (K_guess is not None and np.isfinite(K_guess)) else float(Kc_cont)
 
-    sens = compute_dK_da_at_solution(sol, W0=W0, E=E, omega=omega)
-    info = dict(
-        augment_res_norm=sol.res_norm,
-        Hx_cond=sens.details["Hx_cond"],
-        lin_resid_norm=sens.details["residual_norm"],
-        edge=(int(p), int(q)),
-        w_add=float(w_add),
-        Kc_from_continuation=float(sol.Kc_from_continuation),
-    )
-    return BraessPrediction(dK_da=sens.dK_da, Kc=sol.K, theta=sol.theta, v=sol.v, info=info)
+    # 2) Lock steady state
+    theta_star, ok, _ = U.solve_locked(omega_c, W0, Kc_used, theta0=None, retries=3, rng=rng)
+    if not ok:
+        th0 = U._laplacian_initial_guess(omega_c, W0, Kc_used)
+        theta_star, ok, _ = U.solve_locked(omega_c, W0, Kc_used, theta0=th0, retries=3, rng=rng)
+    if not ok:
+        raise RuntimeError("Failed to lock steady state.")
+
+    # 3) Null eigenvector
+    J = U.kuramoto_jacobian(theta_star, W0, Kc_used)
+    evals, evecs = la.eigh(J)
+    v = evecs[:, np.argmin(np.abs(evals))].copy()
+    v /= (la.norm(v) + 1e-16)
+
+    # 4) Build edge matrix E
+    E = np.zeros_like(W0)
+    E[p, q] = E[q, p] = w_add
+
+    # 5) Augmented system solve
+    dK_da, x_a, Hx, Ha, G0 = solve_dK_da(theta_star, v, Kc_used, 0.0, W0, E, omega_c)
+
+    info = {
+        "method": "augmented_system",
+        "edge": (p, q),
+        "w_add": w_add,
+        "Kc_from_continuation": float(Kc_cont),
+        "K_guess_used": float(K_guess) if K_guess is not None else np.nan,
+        "theta_star": theta_star,
+        "v_null": v,
+        "eigvals_J": evals,
+        "Hx": Hx,
+        "Ha": Ha,
+        "lin_solution": x_a,
+        "augment_residual": G0,
+        "Hx_cond_est": float(np.linalg.cond(Hx)),
+    }
+
+    return PredictResult(Kc=float(Kc_used), dK_da=float(dK_da), info=info)
 
 
-# ---------- CLI demo (optional) ----------
+# ---------------------- trace writer ---------------------
+def write_predict_trace(pred_result: PredictResult, txt_path: str, json_path: Optional[str] = None):
+    import numpy as np
+    I = pred_result.info or {}
+    with open(txt_path, "w") as f:
+        f.write("=== Braess Predictor Trace (Augmented) ===\n")
+        f.write(f"Kc (refined): {pred_result.Kc:.12f}\n")
+        f.write(f"dK/da       : {pred_result.dK_da:+.6e}\n")
+        f.write(f"Method      : {I.get('method','')}\n")
+        f.write(f"Edge, w_add : {I.get('edge')}, {I.get('w_add')}\n")
+        f.write(f"Kc_from_cont: {I.get('Kc_from_continuation','nan')}\n")
+
+    if json_path is None:
+        json_path = txt_path.replace(".txt", ".json")
+    with open(json_path, "w") as jf:
+        json.dump({
+            "Kc": pred_result.Kc,
+            "dK_da": pred_result.dK_da,
+            "info": _to_jsonable(I),
+        }, jf)
+
+
+# ---------------------- tiny CLI demo --------------------
 if __name__ == "__main__":
-    import argparse, json
-    ap = argparse.ArgumentParser(description="Predict Braess via dK/da using continuation-backed Kc.")
+    import argparse
+    ap = argparse.ArgumentParser(description="Predict dK/da via augmented system.")
     ap.add_argument("--n", type=int, default=12)
     ap.add_argument("--p_edge", type=float, default=0.3)
     ap.add_argument("--omega-std", type=float, default=1.0)
     ap.add_argument("--edge", type=str, default="0,1")
     ap.add_argument("--w-add", type=float, default=1.0)
     ap.add_argument("--K-start", type=float, default=5.0)
-    ap.add_argument("--K-min", type=float, default=0.02)
-    ap.add_argument("--K-step", type=float, default=0.05)
+    ap.add_argument("--K-min", type=float, default=0.4)
+    ap.add_argument("--K-step", type=float, default=0.01)
     ap.add_argument("--r-thresh", type=float, default=0.7)
     args = ap.parse_args()
 
     rng = np.random.default_rng(0)
     W0 = U.random_connected_graph(n=args.n, p=args.p_edge, rng=rng)
     omega = U.random_omega(args.n, std=args.omega_std, rng=rng)
-    u_str, v_str = args.edge.split(","); u, v = int(u_str), int(v_str)
+    u, v = map(int, args.edge.split(","))
 
     pred = predict_braess_add_edge(
         W0=W0, omega=omega, p=u, q=v, w_add=args.w_add,
-        K_start=args.K_start, K_min=args.K_min, K_step=args.K_step, r_thresh=args.r_thresh
+        K_start=args.K_start, K_min=args.K_min, K_step=args.K_step,
+        r_thresh=args.r_thresh, rng=rng
     )
 
-    print(json.dumps({
-        "edge": pred.info["edge"],
-        "w_add": pred.info["w_add"],
-        "Kc_from_continuation": pred.info["Kc_from_continuation"],
-        "Kc_refined": pred.Kc,
-        "dK_da": pred.dK_da,
-        "braess_predicted": bool(pred.dK_da > 0.0),
-        "augment_res_norm": pred.info["augment_res_norm"],
-        "Hx_condition_number": pred.info["Hx_cond"],
-        "linear_system_residual": pred.info["lin_resid_norm"],
-    }, indent=2))
+    write_predict_trace(pred, txt_path="predict_trace.txt")
+    print(json.dumps({"edge": pred.info["edge"], "dK_da": pred.dK_da}, indent=2))
