@@ -1,314 +1,368 @@
+
 #!/usr/bin/env python3
-"""
-Replay Braess CSV: reconstruct exact instances and export plots/artifacts.
+# -*- coding: utf-8 -*-
 
-Usage:
-  python replay_braess_from_csv.py --csv braess_runs.csv --outdir replays --top 10
+"""Visualize Braess runs with consistent scaling + predictions + rich texts.
 
-Requires:
-  - utils.py available as "import utils as U" (your provided module)
-  - pandas, numpy, networkx, matplotlib
+Enhancements:
+  • Annotate plots with Kc values.
+  • Per-edge folder includes:
+      - overlay.png, network_added.png (already)
+      - edge_info.txt summarizing baseline/new Kc, delta, prediction, correctness.
+      - run_meta.txt copied into each edge folder with graph generation details.
+  • Per-run folder has:
+      - summary.txt (run meta)
+      - kc_values.csv (per-edge Kc table + prediction, correctness)
+      - baseline images
+  • Global summary at outdir/_predict_summary.txt with accuracy across all runs.
+  • A simple predict_braess() using finite-difference derivative on r(K) wrt edge weight
+    near the baseline Kc. By YOUR rule: positive derivative ⇒ predict paradox.
 
-What it does per run_id (network):
-  replays/<run_id>_<graph>_n<n>/
-    summary.txt
-    baseline/
-      network_baseline.png
-      r_vs_K_baseline.png
-    add-<u>-<v>/ or remove-<u>-<v>/
-      info.txt
-      network_<change>.png
-      r_vs_K_<change>.png
-      r_vs_K_overlay_<change>.png
+Notes:
+  - We recompute curves using the same K grid and onset rule as the generator.
+  - Axes are [K_min, K_start] and [0,1] across all plots.
 """
 
 from __future__ import annotations
 import argparse, os, json
-from typing import Dict, Any, Tuple, Optional, List
+from typing import Optional, Tuple, Dict, Any, List
 import numpy as np
 import pandas as pd
-import networkx as nx
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-import utils as U  # your module
+import utils as U  # do not modify utils.py
 
+def ensure_dir(p: str) -> None:
+    if p and not os.path.exists(p):
+        os.makedirs(p, exist_ok=True)
 
-def ensure_dir(p: str):
-    os.makedirs(p, exist_ok=True)
-
-
-def W_from_edges(n: int, edges: List[List[float]]) -> np.ndarray:
-    """edges is [[u,v,w], ...] possibly from json; return symmetric W."""
-    W = np.zeros((n, n), dtype=float)
+def W_from_edges(n: int, edges: List[Tuple[int,int,float]]) -> np.ndarray:
+    W = np.zeros((n, n), float)
     for u, v, w in edges:
-        u, v = int(u), int(v)
-        w = float(w)
-        W[u, v] = w
-        W[v, u] = w
+        W[int(u), int(v)] = float(w)
+        W[int(v), int(u)] = float(w)
     return W
 
+def parse_json_field(s: str):
+    if s is None or s == "" or (isinstance(s, float) and np.isnan(s)):
+        return None
+    return json.loads(s)
 
-def parse_notes(notes_json: str) -> Dict[str, Any]:
-    try:
-        return json.loads(notes_json)
-    except Exception:
-        return {}
+def kc_first_onset(Ks: np.ndarray, Rs: np.ndarray, eps: float = 0.05, min_run: int = 3) -> Optional[float]:
+    n = len(Rs)
+    for i in range(n):
+        if Rs[i] > eps:
+            j_end = min(n, i + min_run)
+            if j_end - i < min_run:
+                return None
+            if np.all(np.diff(Rs[i:j_end]) >= -1e-10):
+                return float(Ks[i])
+    return None
 
+def continuation_curve(omega: np.ndarray, W: np.ndarray,
+                       K_start: float, K_min: float, K_step: float,
+                       rng: Optional[np.random.Generator]=None) -> Tuple[np.ndarray, np.ndarray]:
+    omega_c = U._center_omega(omega)
+    _Kc_unused, K, R = U.continuation_descend_K(
+        omega_c, W, K_start=K_start, K_min=K_min, K_step=K_step, r_thresh=0.999, rng=rng
+    )
+    return np.asarray(K, float), np.asarray(R, float)
 
-def draw_network(W: np.ndarray,
-                 omega: np.ndarray,
-                 path: str,
-                 title: str,
-                 layout: str,
-                 highlight_edge: Optional[Tuple[int,int]]=None,
-                 pos: Optional[Dict[int, Tuple[float,float]]]=None):
-    """Uses exact geometric positions if provided; otherwise fall back to U.draw_network_graph layout param."""
-    if pos is not None:
-        U.draw_geometric_network_graph(
-            W=W, omega=omega, pos=pos,
-            path=path, title=title,
-            highlight_edge=highlight_edge
-        )
-    else:
-        U.draw_network_graph(
-            W=W, omega=omega, path=path,
-            layout=layout, title=title,
-            highlight_edge=highlight_edge
-        )
-
-
-def plot_overlay_no_zoom(K_base, R_base, K_new, R_new, out_path,
-                         Kc_base: Optional[float], Kc_new: Optional[float],
-                         K_min: float, K_start: float,
-                         r_thresh: float,
-                         labels=("baseline", "modified")):
-    """Overlay r(K) with *fixed axes* to avoid zoom/misleading views."""
-    ensure_dir(os.path.dirname(out_path) or ".")
-    plt.figure(figsize=(8, 6))
-    plt.plot(K_base, R_base, "o-", linewidth=2, markersize=4, label=labels[0])
-    if Kc_base is not None:
-        plt.axvline(Kc_base, linestyle="--", alpha=0.6, label=f"{labels[0]} Kc ≈ {Kc_base:.3f}")
-    plt.plot(K_new, R_new, "s--", linewidth=2, markersize=4, label=labels[1])
-    if Kc_new is not None:
-        plt.axvline(Kc_new, linestyle=":", alpha=0.7, label=f"{labels[1]} Kc ≈ {Kc_new:.3f}")
-    plt.axhline(r_thresh, linestyle="--", alpha=0.35, label=f"threshold {r_thresh}")
-    plt.xlabel("Coupling strength K")
-    plt.ylabel("Order parameter r")
-    plt.title("Overlay: baseline vs modified r(K)")
-    plt.grid(True, alpha=0.3)
-    plt.legend()
-    plt.xlim(float(K_min), float(K_start))   # fixed domain
-    plt.ylim(0.0, 1.0)                       # r ∈ [0,1]
+def plot_r_vs_K(K: np.ndarray, R: np.ndarray, out_path: str,
+                Kc: Optional[float], title: str, K_min: float, K_start: float) -> None:
+    plt.figure()
+    plt.plot(K, R)
+    plt.title(title)
+    plt.xlabel("K")
+    plt.ylabel("r")
+    plt.xlim(min(K_min, K_start), max(K_min, K_start))
+    plt.ylim(0.0, 1.0)
+    if Kc is not None:
+        plt.axvline(Kc, linestyle="--")
+        # annotate
+        y_annot = 0.05
+        plt.text(Kc, y_annot, f"Kc={Kc:.3f}", rotation=90, va="bottom", ha="right")
     plt.tight_layout()
-    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.savefig(out_path, dpi=150)
+    plt.close()
+
+def plot_overlay(K_base: np.ndarray, R_base: np.ndarray,
+                 K_new: np.ndarray, R_new: np.ndarray,
+                 out_path: str, Kc_base: Optional[float], Kc_new: Optional[float],
+                 K_min: float, K_start: float, labels=("baseline","added")) -> None:
+    import matplotlib.pyplot as plt
+
+    plt.figure()
+    plt.plot(K_base, R_base, label=labels[0])
+    plt.plot(K_new, R_new, label=labels[1])
+
+    plt.xlabel("K")
+    plt.ylabel("r")
+    plt.title("Overlay r(K)")
+    plt.xlim(min(K_min, K_start), max(K_min, K_start))
+    plt.ylim(0.0, 1.0)
+
+    # Add vertical lines and shifted text labels to the right side
+    if Kc_base is not None:
+        plt.axvline(Kc_base, linestyle="--", color="blue", linewidth=1.2)
+        plt.text(max(K_min, K_start)*0.99, 0.85, f"base Kc={Kc_base:.3f}",
+                 color="blue", ha="right", va="center")
+
+    if Kc_new is not None:
+        plt.axvline(Kc_new, linestyle=":", color="orange", linewidth=1.2)
+        plt.text(max(K_min, K_start)*0.99, 0.78, f"new Kc={Kc_new:.3f}",
+                 color="orange", ha="right", va="center")
+
+    plt.legend(loc="lower right")
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=150)
     plt.close()
 
 
-def reconstruct_positions_if_available(notes: Dict[str,Any]) -> Optional[Dict[int, Tuple[float,float]]]:
-    """
-    If your CSV includes pos under notes_json (e.g., {"pos_json": [[x,y], ...]}),
-    reconstruct an index→(x,y) dict. Otherwise return None.
-    """
-    pos_json = notes.get("pos_json", None)
-    if pos_json is None:
-        return None
-    try:
-        arr = np.asarray(pos_json, dtype=float)
-        pos = {i: (float(arr[i,0]), float(arr[i,1])) for i in range(arr.shape[0])}
-        return pos
-    except Exception:
-        return None
+def draw_network(W: np.ndarray, omega: np.ndarray, path: str, title: str,
+                 layout: str, pos: Optional[Dict[int, List[float]]] = None,
+                 highlight_edge: Optional[Tuple[int,int]] = None):
+    import networkx as nx
+    G = nx.Graph()
+    n = W.shape[0]
+    G.add_nodes_from(range(n))
+    for i in range(n):
+        for j in range(i+1, n):
+            if W[i,j] != 0.0:
+                G.add_edge(i, j, weight=W[i,j])
 
+    if layout == "geo" and pos is not None:
+        xy = {int(k): (float(v[0]), float(v[1])) for k, v in pos.items()}
+    else:
+        xy = nx.spring_layout(G, seed=42)
 
-def regenerate_curve(omega: np.ndarray, W: np.ndarray,
-                     K_start: float, K_min: float, K_step: float, r_thresh: float,
-                     rng: Optional[np.random.Generator]=None) -> Tuple[Optional[float], np.ndarray, np.ndarray]:
-    """Call your continuation with omega centered (matches pipeline)."""
-    omega_c = U._center_omega(omega)
-    return U.continuation_descend_K(
-        omega_c, W, K_start=K_start, K_min=K_min, K_step=K_step, r_thresh=r_thresh, rng=rng
-    )
+    plt.figure()
+    nx.draw_networkx(G, pos=xy, with_labels=True, node_size=300, font_size=7)
+    if highlight_edge is not None:
+        u, v = highlight_edge
+        nx.draw_networkx_edges(G, pos=xy, edgelist=[(u,v)], width=3)
+    plt.title(title)
+    plt.axis("off")
+    plt.tight_layout()
+    plt.savefig(path, dpi=150)
+    plt.close()
 
+def build_base_meta(row0: pd.Series, W0: np.ndarray, omega: np.ndarray, graph_type: str) -> Dict[str, Any]:
+    return {
+        "run_id": row0["run_id"],
+        "graph_type": graph_type,
+        "n": int(row0["n"]),
+        "K_start": float(row0["K_start"]),
+        "K_min": float(row0["K_min"]),
+        "K_step": float(row0["K_step"]),
+        "onset_eps": float(row0["onset_eps"]),
+        "onset_minrun": int(row0["onset_minrun"]),
+        "add_weight": float(row0["add_weight"]),
+        "edges_count": int((W0!=0).sum()//2),
+        "seed_child": int(row0["seed_child"]),
+        "seed_root": int(row0["seed_root"]),
+        "code_version": row0.get("code_version",""),
+        "timestamp": row0.get("timestamp",""),
+        "graph_params_json": row0.get("graph_params_json",""),
+    }
 
-def process_run(run_rows: pd.DataFrame, outdir: str, top_edges: int):
+def write_meta_txt(path: str, meta: Dict[str, Any]) -> None:
+    with open(path, "w") as f:
+        for k, v in meta.items():
+            f.write(f"{k}: {v}\n")
+
+def predict_braess_derivative_sign(
+    omega: np.ndarray, W0: np.ndarray, u: int, v: int,
+    *, K_start: float, K_min: float, K_step: float,
+    onset_eps: float, onset_minrun: int, add_weight: float, eps_frac: float = 0.1
+) -> Dict[str, Any]:
+    """Finite-difference sign test near baseline Kc.
+
+    Steps:
+      1) Compute baseline Kc and r(K).
+      2) Add a *small* fraction of add_weight (eps_frac * add_weight).
+      3) Recompute r(K) on same grid.
+      4) Align by index; take a window of points starting at baseline Kc index.
+      5) Compute mean dR/dw ≈ (R_plus - R_base) / (eps_weight). If > 0 ⇒ predict Braess (per your rule).
     """
-    For a single run_id, rebuild baseline, select top |delta| paradox edges, and export artifacts.
-    """
-    # All rows in a run should share these fields; take the first
+    Kb, Rb = continuation_curve(omega, W0, K_start, K_min, K_step, rng=np.random.default_rng(123))
+    Kc_base = kc_first_onset(Kb, Rb, eps=onset_eps, min_run=onset_minrun)
+    if Kc_base is None:
+        return {"pred": False, "deriv_mean": None, "Kc_base": None}
+
+    eps_w = max(1e-6, float(eps_frac) * float(add_weight))
+    Wp = W0.copy()
+    Wp[u, v] += eps_w
+    Wp[v, u] += eps_w
+    Kp, Rp = continuation_curve(omega, Wp, K_start, K_min, K_step, rng=np.random.default_rng(124))
+
+    # nearest index to Kc_base
+    idx = np.argmin(np.abs(Kb - Kc_base))
+    j1 = idx
+    j2 = min(len(Kb), idx + 5)
+    if j2 <= j1:
+        j2 = min(len(Kb), j1 + 1)
+    dR = (Rp[j1:j2] - Rb[j1:j2]) / eps_w
+    deriv_mean = float(np.mean(dR)) if dR.size > 0 else 0.0
+
+    pred = bool(deriv_mean > 0.0)
+    return {"pred": pred, "deriv_mean": deriv_mean, "Kc_base": Kc_base}
+
+def process_run(run_rows: pd.DataFrame, outdir: str,
+                add_weight: float, K_start: float, K_min: float, K_step: float,
+                onset_eps: float, onset_minrun: int,
+                global_acc: Dict[str, Any]) -> None:
+    # reconstruct baseline
     row0 = run_rows.iloc[0]
-    meta = {c: row0.get(c, None) for c in run_rows.columns}
-
-    # Parse inputs
-    omega = np.array(json.loads(row0["omega_json"]), dtype=float)
-    edges = json.loads(row0["edges_json"])  # [[u,v,w],...]
     n = int(row0["n"])
+    edges = parse_json_field(row0["edges_json"]) or []
+    pos = parse_json_field(row0.get("pos_json", "")) or None
+    omega = np.array(parse_json_field(row0["omega_json"]), float)
+    graph_type = row0["graph_type"]
+    layout = "geo" if (graph_type == "rgn" and pos is not None) else "spring"
+
     W0 = W_from_edges(n, edges)
 
-    # K grid + settings (used for *exact* regeneration)
-    K_start = float(row0["K_start"])
-    K_min   = float(row0["K_min"])
-    K_step  = float(row0["K_step"])
-    r_thresh= float(row0["r_thresh"])
-    add_weight = float(row0.get("add_weight", 1.0))
+    # baseline curve and first-onset Kc
+    Kb, Rb = continuation_curve(omega, W0, K_start, K_min, K_step, rng=np.random.default_rng(0))
+    Kc_base = kc_first_onset(Kb, Rb, eps=onset_eps, min_run=onset_minrun)
 
-    graph_type = str(row0["graph_type"])
+    # out dirs
     run_id = str(row0["run_id"])
-    layout = "spring" if graph_type == "er" else "spring"  # default
-    notes = parse_notes(row0.get("notes_json", "{}"))
-    pos = reconstruct_positions_if_available(notes) if graph_type == "rgn" else None
-
-    # Output layout
-    net_dirname = f"{run_id}_{graph_type}_n{n}"
-    net_dir = os.path.join(outdir, net_dirname)
+    net_dir = os.path.join(outdir, run_id)
     ensure_dir(net_dir)
     base_dir = os.path.join(net_dir, "baseline")
     ensure_dir(base_dir)
 
-    # Baseline regeneration
-    base_Kc, Kb, Rb = regenerate_curve(omega, W0, K_start, K_min, K_step, r_thresh)
-    # Baseline artifacts
-    U.plot_r_vs_K(Kb, Rb, out_path=os.path.join(base_dir, "r_vs_K_baseline.png"),
-                  Kc=base_Kc, title="Baseline r(K)", r_threshold=r_thresh)
-    draw_network(W0, omega, path=os.path.join(base_dir, "network_baseline.png"),
-                 title="Baseline network", layout=layout, pos=pos)
+    # baseline plots
+    path_rK_base = os.path.join(base_dir, "r_vs_K_baseline.png")
+    path_net_base = os.path.join(base_dir, "network_baseline.png")
+    plot_r_vs_K(Kb, Rb, path_rK_base,
+                Kc=Kc_base, title="Baseline r(K) [first-onset Kc]", K_min=K_min, K_start=K_start)
+    draw_network(W0, omega, path_net_base,
+                 "Baseline network", layout=layout, pos=pos)
 
-    # Write summary.txt
-    with open(os.path.join(net_dir, "summary.txt"), "w") as f:
-        keys = [
-            "code_version","numpy_version","networkx_version","scipy_version","timestamp","run_id",
-            "seed_root","seed_child","graph_type","n","er_p","rgn_radius","rgn_box_size",
-            "weight_low","weight_high","omega_mean","omega_std","K_start","K_min","K_step",
-            "r_thresh","add_weight","baseline_Kc"
-        ]
-        f.write("=== Run Summary ===\n")
-        for k in keys:
-            val = meta.get(k, None)
-            # prefer regenerated baseline if present
-            if k == "baseline_Kc" and base_Kc is not None:
-                val = base_Kc
-            f.write(f"{k}: {val}\n")
-        # geometry note
-        if graph_type == "rgn":
-            saved = bool(notes.get("graph_pos_saved", False))
-            f.write(f"rgn positions saved in CSV: {saved}\n")
-            if pos is None and saved:
-                f.write("NOTE: positions flag is True but pos_json not found; layout fallback used.\n")
-            elif pos is None and not saved:
-                f.write("NOTE: exact RGN positions not stored; layout fallback used.\n")
+    # per-run meta
+    meta = build_base_meta(row0, W0, omega, graph_type)
+    write_meta_txt(os.path.join(net_dir, "summary.txt"), meta)
 
-    # Filter paradox rows (is_braess==True) and pick top by |delta|
-    br = run_rows.copy()
-    br = br[br["is_braess"] == True].dropna(subset=["delta"])
-    if br.empty:
-        return  # nothing to do for this network
-
-    # Sort by absolute jump magnitude descending
-    br = br.reindex(br["delta"].abs().sort_values(ascending=False).index)
-    if top_edges > 0:
-        br = br.head(top_edges)
-
-    # Convert baseline edges to a set for "add/remove" inference
-    base_edge_set = {(int(u), int(v)) if int(u) < int(v) else (int(v), int(u)) for (u, v, _) in edges}
-
-    # Process each chosen edge
-    for _, row in br.iterrows():
-        u, v = int(row["edge_u"]), int(row["edge_v"])
-        e = (u, v) if u < v else (v, u)
-        delta = float(row["delta"])
-
-        # Infer change type:
-        #  - If edge is in baseline, this row logically corresponds to a "remove"
-        #  - Else it's an "add"
-        if e in base_edge_set:
-            change = "remove"
-            # removal must keep graph connected to be valid; if not, skip
-            W_mod = U.try_remove_edge_keep_connected(W0, e)
-            if W_mod is None:
-                # fall back: force removal but note disconnected (skip plots to avoid confusion)
-                folder = os.path.join(net_dir, f"{change}-{e[0]}-{e[1]}")
-                ensure_dir(folder)
-                with open(os.path.join(folder, "info.txt"), "w") as f:
-                    f.write(f"edge: {e}\nchange: {change}\nNOTE: removal disconnects the graph; skipped r(K).\n")
-                continue
-        else:
-            change = "add"
-            W_mod = W0.copy()
-            W_mod[e[0], e[1]] = add_weight
-            W_mod[e[1], e[0]] = add_weight
-
-        # Regenerate modified curve
-        new_Kc, Km, Rm = regenerate_curve(omega, W_mod, K_start, K_min, K_step, r_thresh)
-
-        # Folder for this edge
-        folder = os.path.join(net_dir, f"{change}-{e[0]}-{e[1]}")
-        ensure_dir(folder)
-
-        # Plots
-        # 1) network (highlight edge if present in modified graph)
-        edge_present = (W_mod[e[0], e[1]] != 0.0)
-        highlight = e if edge_present else None
-        draw_network(
-            W_mod, omega,
-            path=os.path.join(folder, f"network_{change}.png"),
-            title=f"Network after {change} {e}",
-            layout=layout, pos=pos, highlight_edge=highlight
-        )
-
-        # 2) modified only
-        U.plot_r_vs_K(Km, Rm,
-                      out_path=os.path.join(folder, f"r_vs_K_{change}.png"),
-                      Kc=new_Kc, title=f"{change} {e}: r(K)", r_threshold=r_thresh)
-
-        # 3) overlay with fixed axes
-        plot_overlay_no_zoom(
-            K_base=Kb, R_base=Rb, K_new=Km, R_new=Rm,
-            out_path=os.path.join(folder, f"r_vs_K_overlay_{change}.png"),
-            Kc_base=base_Kc, Kc_new=new_Kc,
-            K_min=K_min, K_start=K_start,
-            r_thresh=r_thresh,
-            labels=("baseline", f"{change} {e}")
-        )
-
-        # Info file
-        with open(os.path.join(folder, "info.txt"), "w") as f:
-            f.write(f"edge: {e}\n")
-            f.write(f"change: {change}\n")
-            f.write(f"delta_from_csv: {delta}\n")
-            f.write(f"baseline_Kc_csv: {row.get('baseline_Kc', None)}\n")
-            f.write(f"new_Kc_csv: {row.get('new_Kc', None)}\n")
-            f.write(f"baseline_Kc_recomputed: {base_Kc}\n")
-            f.write(f"new_Kc_recomputed: {new_Kc}\n")
-            f.write(f"K_start={K_start}, K_min={K_min}, K_step={K_step}, r_thresh={r_thresh}, add_weight={add_weight}\n")
-
-
-def main():
-    ap = argparse.ArgumentParser(description="Replay biggest Braess jumps from CSV and export artifacts.")
-    ap.add_argument("--csv", required=True, help="Path to CSV (from your scan script).")
-    ap.add_argument("--outdir", default="replays", help="Output directory root.")
-    ap.add_argument("--top", type=int, default=10, help="Per-network: how many biggest |ΔKc| paradox edges to export (0 = all).")
-    args = ap.parse_args()
-
-    ensure_dir(args.outdir)
-    df = pd.read_csv(args.csv)
-
-    # Keep only rows with a valid run_id and paradox flag
-    df = df.dropna(subset=["run_id", "omega_json", "edges_json", "is_braess"])
-    if df.empty:
-        print("No usable rows in CSV.")
+    # find braess edges
+    braess_add_edges = set()
+    for _, r in run_rows.iterrows():
+        if bool(r.get("is_braess", False)):
+            u, v = int(r["edge_u"]), int(r["edge_v"])
+            if u > v: u, v = v, u
+            braess_add_edges.add((u, v))
+    if not braess_add_edges:
         return
 
-    # Group by run (network)
-    for run_id, run_rows in df.groupby("run_id"):
-        # Only consider paradox rows; if none present in this group, skip
-        if not (run_rows["is_braess"] == True).any():
-            continue
-        try:
-            process_run(run_rows, args.outdir, top_edges=args.top)
-        except Exception as e:
-            print(f"[warn] run_id={run_id} failed: {e}")
+    # per-edge
+    rows_out = []
+    for (u, v) in sorted(braess_add_edges):
+        Wm = W0.copy()
+        Wm[u, v] = add_weight
+        Wm[v, u] = add_weight
 
+        Km, Rm = continuation_curve(omega, Wm, K_start, K_min, K_step, rng=np.random.default_rng(1))
+        Kc_new = kc_first_onset(Km, Rm, eps=onset_eps, min_run=onset_minrun)
+
+        edge_tag = f"edge_{u}_{v}"
+        e_dir = os.path.join(net_dir, edge_tag)
+        ensure_dir(e_dir)
+
+        # plots with annotations
+        plot_overlay(Kb, Rb, Km, Rm,
+                     os.path.join(e_dir, "overlay.png"),
+                     Kc_base, Kc_new, K_min, K_start, labels=("baseline","added"))
+        draw_network(Wm, omega, os.path.join(e_dir, "network_added.png"),
+                     f"Added edge ({u},{v})", layout=layout, pos=pos, highlight_edge=(u,v))
+
+        # prediction via finite-difference derivative sign (your rule)
+        pred_info = predict_braess_derivative_sign(
+            omega, W0, u, v,
+            K_start=K_start, K_min=K_min, K_step=K_step,
+            onset_eps=onset_eps, onset_minrun=onset_minrun,
+            add_weight=add_weight, eps_frac=0.1
+        )
+        pred = bool(pred_info["pred"])
+        deriv_mean = pred_info["deriv_mean"]
+
+        # ground truth
+        is_braess = (Kc_base is not None and Kc_new is not None and (Kc_new - Kc_base) > 1e-3)
+        correct = (pred == is_braess)
+
+        # write edge_info.txt
+        with open(os.path.join(e_dir, "edge_info.txt"), "w") as f:
+            f.write(f"edge: ({u},{v})\n")
+            f.write(f"add_weight: {add_weight}\n")
+            f.write(f"Kc_base: {Kc_base}\n")
+            f.write(f"Kc_new: {Kc_new}\n")
+            f.write(f"delta: {None if (Kc_base is None or Kc_new is None) else (Kc_new - Kc_base)}\n")
+            f.write(f"predict_deriv_mean: {deriv_mean}\n")
+            f.write(f"predict_is_braess (sign>0): {pred}\n")
+            f.write(f"ground_truth_is_braess: {is_braess}\n")
+            f.write(f"prediction_correct: {correct}\n")
+
+        # also drop a copy of run meta here
+        write_meta_txt(os.path.join(e_dir, "run_meta.txt"), meta)
+
+        rows_out.append({
+            "u": u, "v": v,
+            "Kc_base": Kc_base, "Kc_new": Kc_new,
+            "delta": None if (Kc_base is None or Kc_new is None) else (Kc_new - Kc_base),
+            "pred": pred, "deriv_mean": deriv_mean, "is_braess": is_braess, "correct": correct
+        })
+
+        # update global counters
+        global_acc["n"] += 1
+        if pred: global_acc["pred_pos"] += 1
+        if is_braess: global_acc["gt_pos"] += 1
+        if correct: global_acc["correct"] += 1
+
+    # save kc table + predictions
+    import csv
+    with open(os.path.join(net_dir, "kc_values.csv"), "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["u","v","Kc_base","Kc_new","delta","pred","deriv_mean","is_braess","correct"])
+        w.writeheader()
+        w.writerows(rows_out)
+
+def main():
+    ap = argparse.ArgumentParser(description="Visualize runs + predictions with consistent K-grid and scaling.")
+    ap.add_argument("--csv", default="braess_runs.csv")
+    ap.add_argument("--outdir", default="viz_runs")
+    args = ap.parse_args()
+
+    df = pd.read_csv(args.csv)
+    if "is_braess" in df.columns:
+        df["is_braess"] = df["is_braess"].astype(bool)
+
+    # global accuracy accumulator
+    global_acc = {"n": 0, "pred_pos": 0, "gt_pos": 0, "correct": 0}
+
+    for run_id, group in df.groupby("run_id"):
+        K_start = float(group["K_start"].iloc[0])
+        K_min = float(group["K_min"].iloc[0])
+        K_step = float(group["K_step"].iloc[0])
+        onset_eps = float(group["onset_eps"].iloc[0])
+        onset_minrun = int(group["onset_minrun"].iloc[0])
+        add_weight = float(group["add_weight"].iloc[0])
+
+        process_run(group, args.outdir, add_weight, K_start, K_min, K_step, onset_eps, onset_minrun, global_acc)
+
+    # write global summary
+    out_summary = os.path.join(args.outdir, "_predict_summary.txt")
+    ensure_dir(args.outdir)
+    with open(out_summary, "w") as f:
+        n = global_acc["n"]
+        acc = (global_acc["correct"]/n) if n else 0.0
+        f.write("=== Predict Braess Summary ===\n")
+        f.write(f"total_edges_evaluated: {n}\n")
+        f.write(f"predicted_positive: {global_acc['pred_pos']}\n")
+        f.write(f"groundtruth_positive: {global_acc['gt_pos']}\n")
+        f.write(f"num_correct: {global_acc['correct']}\n")
+        f.write(f"accuracy: {acc:.4f}\n")
 
 if __name__ == "__main__":
     main()

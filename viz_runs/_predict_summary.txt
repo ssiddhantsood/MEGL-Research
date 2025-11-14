@@ -1,0 +1,6 @@
+=== Predict Braess Summary ===
+total_edges_evaluated: 209
+predicted_positive: 152
+groundtruth_positive: 197
+num_correct: 154
+accuracy: 0.7368

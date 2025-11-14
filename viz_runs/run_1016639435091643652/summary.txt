@@ -1,0 +1,15 @@
+run_id: run_1016639435091643652
+graph_type: rgn
+n: 19
+K_start: 5.0
+K_min: 0.4
+K_step: 0.01
+onset_eps: 0.05
+onset_minrun: 3
+add_weight: 1.0
+edges_count: 26
+seed_child: 1016639435091643652
+seed_root: 5567376058526621140
+code_version: 2025-10-10_single_edge_only_v2
+timestamp: 2025-10-10T14:12:15.270621
+graph_params_json: {"n": 19, "radius": 24.586688371446424, "box_size": 100.0, "weight_low": 1.0, "weight_high": 1.0}
