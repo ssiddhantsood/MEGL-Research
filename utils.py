@@ -31,6 +31,8 @@ def order_parameter(theta: np.ndarray) -> float:
 
 def _center_omega(omega: np.ndarray) -> np.ndarray:
     w = np.asarray(omega, dtype=float)
+    #print("omega", w)
+    print("omega - omega.mean()", w - w.mean())
     return w - w.mean()
 
 
@@ -58,6 +60,9 @@ def _residual_gauge(theta_red: np.ndarray, omega: np.ndarray, W: np.ndarray, K: 
 
     # Full residuals, then drop equation i=0 to match reduced unknowns
     res_full = omega + K * s
+
+    
+
     return res_full[1:]
 
 
@@ -82,10 +87,10 @@ def solve_locked(
 
     # Initial guess in reduced space (n-1 variables)
     if theta0 is None:
-        th0_red = np.full(n-1, 5.0, dtype=float)   # default guess = 5
+        th0_red = np.full(n-1, 0.0, dtype=float)   # default guess = 5
     else:
         th0 = np.asarray(theta0, dtype=float).reshape(-1)
-        th0_red = th0[1:] if len(th0) == n else np.full(n-1, 5.0, dtype=float)
+        th0_red = th0[1:] if len(th0) == n else np.full(n-1, 0.0, dtype=float)
 
     last_res_norm = np.inf
     for _ in range(retries + 1):
@@ -114,6 +119,8 @@ def solve_locked(
 
         # Next attempt: randomize reduced-space initial guess
         th0_red = rng.uniform(0.0, 2*np.pi, size=n-1)
+    
+    print("theta0",theta0)
 
     return th_full, False, last_res_norm
 
@@ -135,7 +142,7 @@ def _laplacian_initial_guess(omega: np.ndarray, W: np.ndarray, K: float) -> np.n
     theta_r, *_ = np.linalg.lstsq(Lrr, b, rcond=None)
     theta = np.zeros(n, dtype=float)
     theta[1:] = theta_r
-
+    
     # Wrap to [-pi, pi] to keep angles tame
     theta = (theta + np.pi) % (2*np.pi) - np.pi
     return theta
@@ -169,6 +176,10 @@ def continuation_descend_K(
     # Lock at high K with a cascade of seeds
     theta0 = None
     theta, ok, _ = solve_locked(omega, W, K, theta0=theta0, retries=3, rng=rng)
+
+   #print("omega", omega)
+    #print("theta", theta)
+    #print("W", W)
 
     if not ok:
         theta0 = _laplacian_initial_guess(omega, W, K)
@@ -861,7 +872,8 @@ def sweep_linear_stability(
     K0 = float(K_desc[0])
     theta, ok, _ = solve_locked(omega_c, W, K0, theta0=None, retries=3, rng=rng)
     if not ok:
-        theta0 = _laplacian_initial_guess(omega_c, W, K0)
+        #theta0 = _laplacian_initial_guess(omega_c, W, K0)
+        theta0 = None
         theta, ok, _ = solve_locked(omega_c, W, K0, theta0=theta0, retries=3, rng=rng)
         if not ok:
             # Give up gracefully: empty result
@@ -872,7 +884,8 @@ def sweep_linear_stability(
         theta, ok, _ = solve_locked(omega_c, W, K, theta0=theta, retries=2, rng=rng)
         if not ok:
             # try a fresh linearized seed at this K
-            theta0 = _laplacian_initial_guess(omega_c, W, K)
+            #theta0 = _laplacian_initial_guess(omega_c, W, K)
+            theta0 = None
             theta, ok, _ = solve_locked(omega_c, W, K, theta0=theta0, retries=2, rng=rng)
         if not ok:
             # No fixed point found: record NaNs for this K

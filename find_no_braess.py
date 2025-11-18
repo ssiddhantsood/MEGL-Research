@@ -1,38 +1,42 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 """
-gen_non_braess.py — generate *negative* examples (no Braess on add)
+Strict Braess scanner (single-edge additions only, full dataset).
 
-This is the inverse of your Braess collector: it scans one-edge additions
-(with no accumulation) and writes ONLY rows where is_braess == False
-(i.e., ΔKc <= 0 for additions). The CSV schema matches your existing one
-so you can concatenate for training/testing.
+For each run:
+  1) Sample a connected base graph W and natural frequencies omega.
+  2) Compute baseline Kc using FIRST-ONSET of incoherence loss on r(K)
+     while descending K.
+  3) Loop over *missing* edges. For each edge (u,v):
+       - Make a COPY of W, add only that one edge with weight=add_weight.
+       - Recompute Kc with the *same* K grid and onset rule.
+       - Record a CSV row for EVERY tested edge (Braess or not).
+  4) Append all rows to a CSV, with important columns first.
 
-Usage:
-  python gen_non_braess.py --csv non_braess_runs.csv --num-runs 200 \
-      --omega-std 1.0 --K-start 5.0 --K-min 0.4 --K-step 0.01 --r-thresh 0.7 \
-      --add-weight 1.0
-
-Notes:
-- Uses U.braess_scan_single_add_edges (single-edge, non-accumulating).
-- Stores full inputs (omega_json, edges_json) for exact replay.
+Important:
+  - We never accumulate added edges. Each candidate is tested in isolation
+    (base graph + exactly one added edge).
 """
 
 from __future__ import annotations
-import argparse, os, sys, json, time
+import argparse
+import os
+import json
 from datetime import datetime
 from typing import Dict, Any, Tuple, Optional, List
 
 import numpy as np
 import pandas as pd
-import networkx as nx
-import scipy
 
-# Expect utils.py in the same dir or PYTHONPATH
-import utils as U
+import utils as U  # do not modify utils.py
 
-CODE_VERSION = "2025-09-18_a+b_logging_v2"
+CODE_VERSION = "2025-10-10_single_edge_only_v3"
 
+
+# --------------------------
+# Helpers
+# --------------------------
 
 def ensure_parent_dir(path: str) -> None:
     d = os.path.dirname(path)
@@ -41,7 +45,7 @@ def ensure_parent_dir(path: str) -> None:
 
 
 def weighted_edge_list_from_W(W: np.ndarray) -> List[Tuple[int, int, float]]:
-    """Upper-triangular weighted edge list (u, v, w)."""
+    """Return list of (u, v, w) with u < v and nonzero weight."""
     n = W.shape[0]
     out: List[Tuple[int, int, float]] = []
     for i in range(n):
@@ -52,214 +56,310 @@ def weighted_edge_list_from_W(W: np.ndarray) -> List[Tuple[int, int, float]]:
     return out
 
 
-def pick_graph(
-    rng: np.random.Generator,
-    child_seed: int,
-    n_min: int = 10,
-    n_max: int = 20,
-) -> Tuple[str, Dict[str, Any], np.ndarray, Optional[Dict[int, Tuple[float, float]]]]:
+def kc_first_onset(
+    Ks: np.ndarray,
+    Rs: np.ndarray,
+    eps: float = 0.05,
+    min_run: int = 3
+) -> Optional[float]:
     """
-    Randomly choose ER or RGN and build a connected weighted adjacency matrix W.
-    Deterministic w.r.t. child_seed through rng.
+    Return first K where r(K) crosses eps and then stays nondecreasing
+    for at least `min_run` consecutive points.
     """
-    n = int(rng.integers(n_min, n_max + 1))
-    graph_type = rng.choice(["er", "rgn"])
-
-    if graph_type == "er":
-        p = float(rng.uniform(0.25, 0.5))
-        W = U.random_connected_graph(n=n, p=p, weight_low=1.0, weight_high=1.0, rng=rng)
-        params = {"n": n, "p": p, "weight_low": 1.0, "weight_high": 1.0}
-        return "er", params, W, None
-    else:
-        radius = float(rng.uniform(18.0, 30.0))
-        box_size = 100.0
-        W, pos = U.random_geometric_graph_2d(
-            n=n, radius=radius, box_size=box_size,
-            weight_low=1.0, weight_high=1.0, rng=rng, return_pos=True
-        )
-        params = {"n": n, "radius": radius, "box_size": box_size, "weight_low": 1.0, "weight_high": 1.0}
-        return "rgn", params, W, pos
+    n = len(Rs)
+    for i in range(n):
+        if Rs[i] > eps:
+            j_end = min(n, i + min_run)
+            if j_end - i < min_run:
+                return None
+            if np.all(np.diff(Rs[i:j_end]) >= -1e-10):
+                return float(Ks[i])
+    return None
 
 
-def compute_kc_and_scan_additions(
+def continuation_curve(
+    omega: np.ndarray,
+    W: np.ndarray,
+    K_start: float,
+    K_min: float,
+    K_step: float,
+    rng: Optional[np.random.Generator] = None
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Compute r(K) curve while descending K using continuation_descend_K,
+    with centered omega and a high r_thresh to get a full curve.
+    """
+    omega_c = U._center_omega(omega)
+    _Kc_unused, K, R = U.continuation_descend_K(
+        omega_c,
+        W,
+        K_start=K_start,
+        K_min=K_min,
+        K_step=K_step,
+        r_thresh=0.999,
+        rng=rng,
+    )
+    return np.asarray(K, float), np.asarray(R, float)
+
+
+# --------------------------
+# Core scanning logic
+# --------------------------
+
+def compute_kc_and_scan_additions_strict(
     rng: np.random.Generator,
     omega: np.ndarray,
     W: np.ndarray,
-    K_start: float = 5.0,
-    K_min: float = 0.4,
-    K_step: float = 0.01,
-    r_thresh: float = 0.7,
-    add_weight: float = 1.0,
-) -> Tuple[Optional[float], list[dict]]:
+    *,
+    K_start: float,
+    K_min: float,
+    K_step: float,
+    onset_eps: float,
+    onset_minrun: int,
+    braess_tol: float,
+    add_weight: float,
+) -> Tuple[Optional[float], List[dict]]:
     """
-    Returns (baseline_Kc, rows). Rows have:
-      edge, baseline_Kc, new_Kc, delta, is_braess
+    Compute baseline Kc, then test each missing edge (u,v) by adding only that
+    edge and recomputing Kc.
 
-    Single-edge, non-accumulating additions (fresh copy of W each time).
+    Returns:
+      base_Kc: baseline Kc (may be None if onset not found)
+      rows: list of dicts, EACH representing one tested edge with fields:
+            edge_u, edge_v, baseline_Kc, new_Kc, delta, is_braess, braess_tol, label
     """
-    omega_c = U._center_omega(omega)
-    base_Kc, _, _ = U.continuation_descend_K(
-        omega_c, W,
-        K_start=K_start, K_min=K_min, K_step=K_step,
-        r_thresh=r_thresh, rng=rng
-    )
+    # Baseline
+    Kb, Rb = continuation_curve(omega, W, K_start, K_min, K_step, rng=rng)
+    base_Kc = kc_first_onset(Kb, Rb, eps=onset_eps, min_run=onset_minrun)
 
-    rows = U.braess_scan_single_add_edges(
-        omega, W, add_weight=add_weight,
-        K_start=K_start, K_min=K_min, K_step=K_step,
-        r_thresh=r_thresh, rng=rng, outdir=None
-    )
+    rows: List[dict] = []
+    missing = U.missing_edges(W)  # list of (u,v) with u<v
+
+    for (u, v) in missing:
+        # single-edge test in isolation
+        Wm = W.copy()
+        Wm[u, v] = add_weight
+        Wm[v, u] = add_weight
+
+        Km, Rm = continuation_curve(omega, Wm, K_start, K_min, K_step, rng=rng)
+        new_Kc = kc_first_onset(Km, Rm, eps=onset_eps, min_run=onset_minrun)
+
+        # Handle cases with missing Kc gracefully
+        if base_Kc is None or new_Kc is None:
+            delta_val = np.nan
+            is_braess = False
+            label = "unknown_kc"
+        else:
+            delta_val = float(new_Kc - base_Kc)
+            is_braess = bool(delta_val > float(braess_tol))
+            label = "braess" if is_braess else "non_braess"
+
+        rows.append({
+            "edge_u": int(u),
+            "edge_v": int(v),
+            "baseline_Kc": float(base_Kc) if base_Kc is not None else np.nan,
+            "new_Kc": float(new_Kc) if new_Kc is not None else np.nan,
+            "delta": float(delta_val) if not np.isnan(delta_val) else np.nan,
+            "is_braess": bool(is_braess),
+            "braess_tol": float(braess_tol),
+            "label": label,
+        })
+
     return base_Kc, rows
 
 
-def append_rows_to_csv(csv_path: str, rows: list[dict]) -> None:
+def append_rows_to_csv(csv_path: str, rows: List[dict]) -> None:
     """
-    Append (or create) the CSV with the provided list of dicts.
-    Ensures consistent column ordering and writes header if the file does not exist.
+    Append given rows to a CSV, with important columns first:
+      [is_braess, label, baseline_Kc, new_Kc, delta, braess_tol,
+       edge_u, edge_v, n, graph_type, ...rest...]
     """
+    if not rows:
+        return
     ensure_parent_dir(csv_path)
     df = pd.DataFrame(rows)
-    preferred_cols = [
-        "code_version",
-        "numpy_version", "networkx_version", "scipy_version",
-        "timestamp", "run_id",
-        "seed_root", "seed_child",
-        "graph_type", "n",
-        "er_p", "rgn_radius", "rgn_box_size",
-        "weight_low", "weight_high",
-        "omega_mean", "omega_std",
-        "K_start", "K_min", "K_step", "r_thresh", "add_weight",
-        "baseline_Kc", "edge_u", "edge_v", "new_Kc", "delta", "is_braess",
-        "omega_json", "edges_json",
-        "notes_json",
+
+    # Important columns at the front
+    front_cols = [
+        "is_braess",
+        "label",
+        "baseline_Kc",
+        "new_Kc",
+        "delta",
+        "braess_tol",
+        "edge_u",
+        "edge_v",
+        "n",
+        "graph_type",
     ]
-    for c in preferred_cols:
-        if c not in df.columns:
-            df[c] = np.nan
-    df = df[preferred_cols + [c for c in df.columns if c not in preferred_cols]]
-    write_header = not os.path.exists(csv_path) or os.path.getsize(csv_path) == 0
+    other_cols = [c for c in df.columns if c not in front_cols]
+    ordered_cols = [c for c in front_cols if c in df.columns] + other_cols
+    df = df[ordered_cols]
+
+    write_header = (not os.path.exists(csv_path)) or (os.path.getsize(csv_path) == 0)
     df.to_csv(csv_path, mode="a", header=write_header, index=False)
 
 
+def pick_graph(
+    rng: np.random.Generator,
+    child_seed: int,
+    n_min: int,
+    n_max: int
+) -> Tuple[str, Dict[str, Any], np.ndarray, Optional[Dict[int, List[float]]]]:
+    """
+    Sample either an Erdos-Renyi or random geometric graph.
+    Returns:
+      graph_type, graph_params_dict, W, pos (dict or None)
+    """
+    n = int(rng.integers(n_min, n_max + 1))
+    kind = rng.choice(["er", "rgn"])
+
+    if kind == "er":
+        p = float(rng.uniform(0.25, 0.5))
+        W = U.random_connected_graph(
+            n=n,
+            p=p,
+            weight_low=1.0,
+            weight_high=1.0,
+            rng=rng,
+        )
+        pos = None
+        gparams = {
+            "n": n,
+            "p": p,
+            "weight_low": 1.0,
+            "weight_high": 1.0,
+        }
+    else:
+        radius = float(rng.uniform(18.0, 30.0))
+        box = 100.0
+        W, pos = U.random_geometric_graph_2d(
+            n=n,
+            radius=radius,
+            box_size=box,
+            weight_low=1.0,
+            weight_high=1.0,
+            rng=rng,
+            return_pos=True,
+        )
+        gparams = {
+            "n": n,
+            "radius": radius,
+            "box_size": box,
+            "weight_low": 1.0,
+            "weight_high": 1.0,
+        }
+
+    return kind, gparams, W, pos
+
+
+# --------------------------
+# Main CLI
+# --------------------------
+
 def main():
-    ap = argparse.ArgumentParser(description="Collect NON-Braess examples (ΔKc <= 0 on add) with full inputs.")
-    ap.add_argument("--csv", default="non_braess_runs.csv", help="Path to the output CSV.")
-    ap.add_argument("--num-runs", type=int, default=100, help="Number of random graphs to generate (Ctrl-C to stop early).")
-    ap.add_argument("--omega-std", type=float, default=1.0, help="Std dev for omega ~ N(0, std^2).")
-    ap.add_argument("--r-thresh", type=float, default=0.7, help="Order parameter threshold defining Kc.")
-    ap.add_argument("--K-start", type=float, default=5.0, help="Start K for continuation (descend).")
-    ap.add_argument("--K-min", type=float, default=0.4, help="Minimum K to stop.")
-    ap.add_argument("--K-step", type=float, default=0.01, help="Step size in K for continuation.")
-    ap.add_argument("--add-weight", type=float, default=1.0, help="Weight for each added edge during scan.")
-    ap.add_argument("--save-zero-delta", action="store_true",
-                    help="If set, also save ΔKc == 0 cases (otherwise require ΔKc < 0 or is_braess==False).")
+    ap = argparse.ArgumentParser(
+        description="Strict single-edge Braess scanner: log ALL tested edges."
+    )
+    ap.add_argument("--csv", default="1example.csv")
+    ap.add_argument("--num-runs", type=int, default=1)
+    ap.add_argument("--omega-std", type=float, default=1.0)
+    ap.add_argument("--K-start", type=float, default=5.0)
+    ap.add_argument("--K-min", type=float, default=0.4)
+    ap.add_argument("--K-step", type=float, default=0.01)
+    ap.add_argument("--onset-eps", type=float, default=0.05)
+    ap.add_argument("--onset-minrun", type=int, default=3)
+    ap.add_argument("--braess-tol", type=float, default=1e-3)
+    ap.add_argument("--add-weight", type=float, default=1.0)
     ap.add_argument("--n-min", type=int, default=10)
     ap.add_argument("--n-max", type=int, default=20)
     args = ap.parse_args()
 
-    # Deterministic root seed for reproducibility of the run set
     seed_root = int(np.random.default_rng().integers(0, 2**63 - 1))
     root_rng = np.random.default_rng(seed_root)
 
     print(f"[info] code={CODE_VERSION}")
-    print(f"[info] numpy={np.__version__} networkx={nx.__version__} scipy={scipy.__version__}")
     print(f"[info] root seed: {seed_root}")
     print(f"[info] writing CSV to: {args.csv}")
-    print(f"[info] starting runs: {args.num_runs} (Ctrl-C to stop early)")
+    print(f"[info] starting runs: {args.num_runs}")
+
+    all_rows: List[dict] = []
 
     try:
         for run_idx in range(args.num_runs):
-            child_seed = int(root_rng.integers(0, 2**63 - 1))
-            rng = np.random.default_rng(child_seed)
+            seed_child = int(root_rng.integers(0, 2**63 - 1))
+            rng = np.random.default_rng(seed_child)
 
-            # Pick graph (ER or RGN)
-            graph_type, gparams, W, pos = pick_graph(rng, child_seed, n_min=args.n_min, n_max=args.n_max)
-            n = W.shape[0]
-            print(f"[new graph] run {run_idx:04d} | type={graph_type} | n={n} | seed_child={child_seed}")
-
-            # Draw omega
-            omega = U.random_omega(n, mean=0.0, std=args.omega_std, rng=rng)
-
-            # Exact inputs for replay
-            edges_list = weighted_edge_list_from_W(W)  # (u, v, w)
-            omega_list = [float(x) for x in omega.tolist()]
-            print(f"[scan] run {run_idx:04d} | missing_edges={len(U.missing_edges(W))} | scanning non-braess additions…")
-
-            # Compute baseline Kc and scan additions
-            base_Kc, rows = compute_kc_and_scan_additions(
-                rng, omega, W,
-                K_start=args.K_start, K_min=args.K_min, K_step=args.K_step,
-                r_thresh=args.r_thresh, add_weight=args.add_weight
+            graph_type, gparams, W, pos = pick_graph(
+                rng, seed_child, args.n_min, args.n_max
             )
-            print(f"[scan] run {run_idx:04d} | done")
+            n = W.shape[0]
 
-            # Library versions at time of run
-            v_numpy = np.__version__
-            v_nx = nx.__version__
-            v_scipy = scipy.__version__
+            # omega
+            omega = U.random_omega(
+                n=n,
+                mean=0.0,
+                std=args.omega_std,
+                rng=rng,
+            )
 
-            # Timestamp + run id
-            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            run_id = f"{int(time.time())}_{run_idx}"
+            # compute Kc + scan all single-edge additions
+            base_Kc, rows_core = compute_kc_and_scan_additions_strict(
+                rng,
+                omega,
+                W,
+                K_start=args.K_start,
+                K_min=args.K_min,
+                K_step=args.K_step,
+                onset_eps=args.onset_eps,
+                onset_minrun=args.onset_minrun,
+                braess_tol=args.braess_tol,
+                add_weight=args.add_weight,
+            )
 
-            # Filter: keep ONLY non-Braess rows
-            out_rows: List[Dict[str, Any]] = []
-            for r in rows:
-                is_braess = bool(r.get("is_braess", False))
-                dlt = r.get("delta", None)
-                keep = (not is_braess)
-                if not args.save_zero_delta and dlt is not None:
-                    # If user does NOT want zero-delta, require strictly <= 0 with a small tolerance
-                    keep = keep and (float(dlt) < -1e-12 or float(dlt) <= 0.0)
-
-                if not keep:
-                    continue
-
-                (u, v) = r.get("edge", (None, None))
+            # decorate rows with meta for this run
+            if rows_core:
                 meta = {
+                    "timestamp": datetime.utcnow().isoformat(),
                     "code_version": CODE_VERSION,
-                    "numpy_version": v_numpy, "networkx_version": v_nx, "scipy_version": v_scipy,
-                    "timestamp": ts,
-                    "run_id": run_id,
-                    "seed_root": int(seed_root),
-                    "seed_child": int(child_seed),
+                    "seed_root": seed_root,
+                    "seed_child": seed_child,
+                    "run_id": f"run_{seed_child}",
                     "graph_type": graph_type,
-                    "n": int(n),
-                    "er_p": float(gparams["p"]) if graph_type == "er" else np.nan,
-                    "rgn_radius": float(gparams["radius"]) if graph_type == "rgn" else np.nan,
-                    "rgn_box_size": float(gparams["box_size"]) if graph_type == "rgn" else np.nan,
-                    "weight_low": float(gparams["weight_low"]),
-                    "weight_high": float(gparams["weight_high"]),
-                    "omega_mean": 0.0,
-                    "omega_std": float(args.omega_std),
+                    "graph_params_json": json.dumps(gparams),
+                    "n": n,
                     "K_start": float(args.K_start),
                     "K_min": float(args.K_min),
                     "K_step": float(args.K_step),
-                    "r_thresh": float(args.r_thresh),
+                    "onset_eps": float(args.onset_eps),
+                    "onset_minrun": int(args.onset_minrun),
                     "add_weight": float(args.add_weight),
-                    "baseline_Kc": None if r.get("baseline_Kc") is None else float(r["baseline_Kc"]),
-                    "edge_u": None if u is None else int(u),
-                    "edge_v": None if v is None else int(v),
-                    "new_Kc": None if r.get("new_Kc") is None else float(r["new_Kc"]),
-                    "delta": None if dlt is None else float(dlt),
-                    "is_braess": False,  # by construction
-                    # Full inputs for exact replay:
-                    "omega_json": json.dumps(omega_list),
-                    "edges_json": json.dumps(edges_list),
-                    "notes_json": json.dumps({
-                        "graph_pos_saved": bool(pos is not None),
-                        "generator": graph_type,
-                    }),
+                    "omega_json": json.dumps(list(map(float, omega.tolist()))),
+                    "edges_json": json.dumps(weighted_edge_list_from_W(W)),
+                    "pos_json": json.dumps(
+                        {
+                            int(k): [float(v[0]), float(v[1])]
+                            for k, v in (pos or {}).items()
+                        }
+                    ) if pos is not None else "",
                 }
-                out_rows.append(meta)
+                for r in rows_core:
+                    r.update(meta)
+                all_rows.extend(rows_core)
 
-            if out_rows:
-                append_rows_to_csv(args.csv, out_rows)
-                print(f"[run {run_idx:04d}] n={n} type={graph_type} non_braess_edges={len(out_rows)}"
-                      + (f" base_Kc={base_Kc:.4f}" if base_Kc is not None else " base_Kc=None"))
+                num_braess = sum(1 for r in rows_core if r.get("is_braess", False))
+                print(
+                    f"[run {run_idx:04d}] tested edges={len(rows_core)}, "
+                    f"braess={num_braess} | base_Kc={base_Kc}"
+                )
             else:
-                print(f"[run {run_idx:04d}] n={n} type={graph_type} no NON-Braess edges found"
-                      + (f", base_Kc={base_Kc:.4f}" if base_Kc is not None else ", base_Kc=None"))
+                print(
+                    f"[run {run_idx:04d}] no missing edges? | base_Kc={base_Kc}"
+                )
+
+        # write once at the end
+        append_rows_to_csv(args.csv, all_rows)
+        print(f"[done] appended {len(all_rows)} rows (all edges) to {args.csv}")
 
     except KeyboardInterrupt:
         print("\n[info] interrupted by user; exiting gracefully.")

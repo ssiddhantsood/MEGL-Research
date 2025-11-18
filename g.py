@@ -86,14 +86,6 @@ def G(theta, v, K, a, W, edge_to_add, omega):
         [normalization]                 # 1 equation
     ])
 
-theta_0 = np.array([0.0, 0.0, 0.0])
-v_0 = np.array([1.0, 0.0, 0.0])
-K_0 = 1.0
-edge_to_add = (0, 1)
-W = np.array([[0.0, 1.0, 0.0], [1.0, 0.0, 1.0], [0.0, 1.0, 0.0]])
-omega = np.array([1.0, 1.0, 1.0])
-example_g = G(theta_0, v_0, K_0, edge_to_add, W, omega)
-print(example_g)
 
 
 def predict_braess(theta_0, v_0, K_0, edge_to_add, W, omega):
@@ -128,5 +120,6 @@ def predict_braess(theta_0, v_0, K_0, edge_to_add, W, omega):
     denominator = np.dot(v_0, s_theta_0)
     
     k_prime_0 = numerator / denominator
+    print(f"k_prime_0: {k_prime_0}")
     
     return k_prime_0

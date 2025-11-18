@@ -1,0 +1,2 @@
+u,v,Kc_base,Kc_new,delta,pred,deriv_mean,is_braess,correct
+5,7,0.8600000000000629,1.6300000000000636,0.7700000000000007,True,0.23766446010793585,True,True

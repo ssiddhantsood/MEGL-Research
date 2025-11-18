@@ -1,0 +1,292 @@
+======================================================================
+BRAESS PARADOX ANALYSIS
+======================================================================
+
+Output directory: braess_output/
+
+1. Computing baseline r(K) curve...
+   Baseline Kc = 0.5600
+   Number of K points: 447
+      Saved: braess_output/baseline_r_vs_K.png
+      Saved: braess_output/baseline_network.png
+
+2. Testing edge additions...
+   Found 28 missing edges to test
+
+   [1/28] Testing edge (0, 3)...
+      Kc_new = 0.5600
+      Delta = N/A
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.1166
+      Correct: True
+
+   [2/28] Testing edge (0, 4)...
+      Kc_new = 0.5600
+      Delta = N/A
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0061
+      Correct: True
+
+   [3/28] Testing edge (0, 5)...
+      Kc_new = 0.5600
+      Delta = N/A
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.1023
+      Correct: True
+
+   [4/28] Testing edge (0, 7)...
+      Kc_new = 0.5500
+      Delta = -0.0100
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0618
+      Correct: True
+
+   [5/28] Testing edge (0, 8)...
+      Kc_new = 0.5700
+      Delta = 0.0100
+      Braess (actual): True
+      Braess (predicted): True
+      k'(0) = 0.0111
+      Correct: True
+      >>> BRAESS PARADOX DETECTED! <<<
+      Saved: braess_output/edge_0_8_overlay.png
+      Saved: braess_output/edge_0_8_network.png
+
+   [6/28] Testing edge (0, 9)...
+      Kc_new = 0.4000
+      Delta = -0.1600
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.1341
+      Correct: True
+
+   [7/28] Testing edge (1, 4)...
+      Kc_new = 0.5600
+      Delta = N/A
+      Braess (actual): False
+      Braess (predicted): True
+      k'(0) = 0.0029
+      Correct: False
+
+   [8/28] Testing edge (1, 5)...
+      Kc_new = 0.5600
+      Delta = N/A
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0149
+      Correct: True
+
+   [9/28] Testing edge (1, 6)...
+      Kc_new = 0.5600
+      Delta = N/A
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0420
+      Correct: True
+
+   [10/28] Testing edge (1, 7)...
+      Kc_new = 0.5600
+      Delta = N/A
+      Braess (actual): False
+      Braess (predicted): True
+      k'(0) = 0.0042
+      Correct: False
+
+   [11/28] Testing edge (1, 8)...
+      Kc_new = 0.5600
+      Delta = N/A
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0027
+      Correct: True
+
+   [12/28] Testing edge (1, 9)...
+      Kc_new = 0.4300
+      Delta = -0.1300
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0751
+      Correct: True
+
+   [13/28] Testing edge (2, 5)...
+      Kc_new = 0.5600
+      Delta = N/A
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.1692
+      Correct: True
+
+   [14/28] Testing edge (2, 6)...
+      Kc_new = 0.5600
+      Delta = N/A
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0081
+      Correct: True
+
+   [15/28] Testing edge (2, 7)...
+      Kc_new = 0.5500
+      Delta = -0.0100
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.1251
+      Correct: True
+
+   [16/28] Testing edge (2, 8)...
+      Kc_new = 0.5700
+      Delta = 0.0100
+      Braess (actual): True
+      Braess (predicted): False
+      k'(0) = -0.0285
+      Correct: False
+      >>> BRAESS PARADOX DETECTED! <<<
+      Saved: braess_output/edge_2_8_overlay.png
+      Saved: braess_output/edge_2_8_network.png
+
+   [17/28] Testing edge (2, 9)...
+      Kc_new = 0.4000
+      Delta = -0.1600
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.1942
+      Correct: True
+
+   [18/28] Testing edge (3, 6)...
+      Kc_new = 0.5600
+      Delta = N/A
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.1250
+      Correct: True
+
+   [19/28] Testing edge (3, 7)...
+      Kc_new = 0.5600
+      Delta = N/A
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0016
+      Correct: True
+
+   [20/28] Testing edge (3, 8)...
+      Kc_new = 0.5500
+      Delta = -0.0100
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0697
+      Correct: True
+
+   [21/28] Testing edge (3, 9)...
+      Kc_new = 0.4500
+      Delta = -0.1100
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0198
+      Correct: True
+
+   [22/28] Testing edge (4, 6)...
+      Kc_new = 0.5600
+      Delta = N/A
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0194
+      Correct: True
+
+   [23/28] Testing edge (4, 8)...
+      Kc_new = 0.5600
+      Delta = N/A
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0020
+      Correct: True
+
+   [24/28] Testing edge (4, 9)...
+      Kc_new = 0.4200
+      Delta = -0.1400
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.1503
+      Correct: True
+
+   [25/28] Testing edge (5, 7)...
+      Kc_new = 0.5600
+      Delta = N/A
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0036
+      Correct: True
+
+   [26/28] Testing edge (5, 8)...
+      Kc_new = 0.5500
+      Delta = -0.0100
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0677
+      Correct: True
+
+   [27/28] Testing edge (5, 9)...
+      Kc_new = 0.4600
+      Delta = -0.1000
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0385
+      Correct: True
+
+   [28/28] Testing edge (6, 9)...
+      Kc_new = 0.4000
+      Delta = -0.1600
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.1914
+      Correct: True
+
+======================================================================
+SUMMARY
+======================================================================
+
+Total edges tested: 28
+Braess edges (actual): 2
+Braess edges (predicted): 3
+Correct predictions: 25
+Accuracy: 89.3%
+
+Detailed results:
+Edge       Kc_base    Kc_new     Delta      Actual     Predicted  k_prime   
+----------------------------------------------------------------------
+(0, 3)     0.5600     0.5600     N/A        No         No         -0.1166   
+(0, 4)     0.5600     0.5600     N/A        No         No         -0.0061   
+(0, 5)     0.5600     0.5600     N/A        No         No         -0.1023   
+(0, 7)     0.5600     0.5500     -0.0100    No         No         -0.0618   
+(0, 8)     0.5600     0.5700     0.0100     Yes        Yes        0.0111    
+(0, 9)     0.5600     0.4000     -0.1600    No         No         -0.1341   
+(1, 4)     0.5600     0.5600     N/A        No         Yes        0.0029    
+(1, 5)     0.5600     0.5600     N/A        No         No         -0.0149   
+(1, 6)     0.5600     0.5600     N/A        No         No         -0.0420   
+(1, 7)     0.5600     0.5600     N/A        No         Yes        0.0042    
+(1, 8)     0.5600     0.5600     N/A        No         No         -0.0027   
+(1, 9)     0.5600     0.4300     -0.1300    No         No         -0.0751   
+(2, 5)     0.5600     0.5600     N/A        No         No         -0.1692   
+(2, 6)     0.5600     0.5600     N/A        No         No         -0.0081   
+(2, 7)     0.5600     0.5500     -0.0100    No         No         -0.1251   
+(2, 8)     0.5600     0.5700     0.0100     Yes        No         -0.0285   
+(2, 9)     0.5600     0.4000     -0.1600    No         No         -0.1942   
+(3, 6)     0.5600     0.5600     N/A        No         No         -0.1250   
+(3, 7)     0.5600     0.5600     N/A        No         No         -0.0016   
+(3, 8)     0.5600     0.5500     -0.0100    No         No         -0.0697   
+(3, 9)     0.5600     0.4500     -0.1100    No         No         -0.0198   
+(4, 6)     0.5600     0.5600     N/A        No         No         -0.0194   
+(4, 8)     0.5600     0.5600     N/A        No         No         -0.0020   
+(4, 9)     0.5600     0.4200     -0.1400    No         No         -0.1503   
+(5, 7)     0.5600     0.5600     N/A        No         No         -0.0036   
+(5, 8)     0.5600     0.5500     -0.0100    No         No         -0.0677   
+(5, 9)     0.5600     0.4600     -0.1000    No         No         -0.0385   
+(6, 9)     0.5600     0.4000     -0.1600    No         No         -0.1914   
+
+======================================================================
+
+All plots saved to: braess_output/
+Full results saved to: braess_output/analysis_results.txt
+======================================================================

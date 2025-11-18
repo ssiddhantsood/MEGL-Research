@@ -1,0 +1,9 @@
+edge: (6,13)
+add_weight: 1.0
+Kc_base: 2.740000000000048
+Kc_new: None
+delta: None
+predict_deriv_mean: -0.20848073520873323
+predict_is_braess (sign>0): False
+ground_truth_is_braess: False
+prediction_correct: True
