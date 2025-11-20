@@ -2,291 +2,811 @@
 BRAESS PARADOX ANALYSIS
 ======================================================================
 
-Output directory: braess_output/
-
 1. Computing baseline r(K) curve...
-   Baseline Kc = 0.5600
-   Number of K points: 447
-      Saved: braess_output/baseline_r_vs_K.png
-      Saved: braess_output/baseline_network.png
+
+   Saving baseline data to CSV files...
+      Saved CSV files for baseline:
+        - baseline_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - baseline_eigenvalues.csv (all eigenvalues)
+        - baseline_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - baseline_theta_values.csv (phase angles)
+        - baseline_omega_values.csv (natural frequencies)
+        - baseline_network_W.csv (adjacency matrix)
+   Baseline Kc = 0.3960
+   Number of K points: 2607
 
 2. Testing edge additions...
-   Found 28 missing edges to test
+   Found 45 missing edges to test
 
-   [1/28] Testing edge (0, 3)...
-      Kc_new = 0.5600
-      Delta = N/A
+   [1/45] Testing edge (0, 3)...
+      Saving data for edge (0, 3) to CSV files...
+      Saved CSV files for edge_0_3:
+        - edge_0_3_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_0_3_eigenvalues.csv (all eigenvalues)
+        - edge_0_3_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_0_3_theta_values.csv (phase angles)
+        - edge_0_3_omega_values.csv (natural frequencies)
+        - edge_0_3_network_W.csv (adjacency matrix)
+      Kc_new = 0.3840
+      Delta = -0.0120
       Braess (actual): False
       Braess (predicted): False
-      k'(0) = -0.1166
+      k'(0) = -0.0534
       Correct: True
 
-   [2/28] Testing edge (0, 4)...
-      Kc_new = 0.5600
-      Delta = N/A
+   [2/45] Testing edge (0, 4)...
+      Saving data for edge (0, 4) to CSV files...
+      Saved CSV files for edge_0_4:
+        - edge_0_4_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_0_4_eigenvalues.csv (all eigenvalues)
+        - edge_0_4_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_0_4_theta_values.csv (phase angles)
+        - edge_0_4_omega_values.csv (natural frequencies)
+        - edge_0_4_network_W.csv (adjacency matrix)
+      Kc_new = 0.3870
+      Delta = -0.0090
       Braess (actual): False
       Braess (predicted): False
-      k'(0) = -0.0061
+      k'(0) = -0.0499
       Correct: True
 
-   [3/28] Testing edge (0, 5)...
-      Kc_new = 0.5600
-      Delta = N/A
+   [3/45] Testing edge (0, 5)...
+      Saving data for edge (0, 5) to CSV files...
+      Saved CSV files for edge_0_5:
+        - edge_0_5_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_0_5_eigenvalues.csv (all eigenvalues)
+        - edge_0_5_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_0_5_theta_values.csv (phase angles)
+        - edge_0_5_omega_values.csv (natural frequencies)
+        - edge_0_5_network_W.csv (adjacency matrix)
+      Kc_new = 0.3830
+      Delta = -0.0130
       Braess (actual): False
       Braess (predicted): False
-      k'(0) = -0.1023
+      k'(0) = -0.0710
       Correct: True
 
-   [4/28] Testing edge (0, 7)...
-      Kc_new = 0.5500
-      Delta = -0.0100
+   [4/45] Testing edge (0, 7)...
+      Saving data for edge (0, 7) to CSV files...
+      Saved CSV files for edge_0_7:
+        - edge_0_7_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_0_7_eigenvalues.csv (all eigenvalues)
+        - edge_0_7_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_0_7_theta_values.csv (phase angles)
+        - edge_0_7_omega_values.csv (natural frequencies)
+        - edge_0_7_network_W.csv (adjacency matrix)
+      Kc_new = 0.3850
+      Delta = -0.0110
       Braess (actual): False
       Braess (predicted): False
-      k'(0) = -0.0618
+      k'(0) = -0.0597
       Correct: True
 
-   [5/28] Testing edge (0, 8)...
-      Kc_new = 0.5700
-      Delta = 0.0100
+   [5/45] Testing edge (0, 8)...
+      Saving data for edge (0, 8) to CSV files...
+      Saved CSV files for edge_0_8:
+        - edge_0_8_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_0_8_eigenvalues.csv (all eigenvalues)
+        - edge_0_8_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_0_8_theta_values.csv (phase angles)
+        - edge_0_8_omega_values.csv (natural frequencies)
+        - edge_0_8_network_W.csv (adjacency matrix)
+      Kc_new = 0.3760
+      Delta = -0.0200
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.1259
+      Correct: True
+
+   [6/45] Testing edge (0, 9)...
+      Saving data for edge (0, 9) to CSV files...
+      Saved CSV files for edge_0_9:
+        - edge_0_9_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_0_9_eigenvalues.csv (all eigenvalues)
+        - edge_0_9_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_0_9_theta_values.csv (phase angles)
+        - edge_0_9_omega_values.csv (natural frequencies)
+        - edge_0_9_network_W.csv (adjacency matrix)
+      Kc_new = 0.3630
+      Delta = -0.0330
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.2967
+      Correct: True
+
+   [7/45] Testing edge (0, 10)...
+      Saving data for edge (0, 10) to CSV files...
+      Saved CSV files for edge_0_10:
+        - edge_0_10_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_0_10_eigenvalues.csv (all eigenvalues)
+        - edge_0_10_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_0_10_theta_values.csv (phase angles)
+        - edge_0_10_omega_values.csv (natural frequencies)
+        - edge_0_10_network_W.csv (adjacency matrix)
+      Kc_new = 0.3670
+      Delta = -0.0290
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.1916
+      Correct: True
+
+   [8/45] Testing edge (0, 11)...
+      Saving data for edge (0, 11) to CSV files...
+      Saved CSV files for edge_0_11:
+        - edge_0_11_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_0_11_eigenvalues.csv (all eigenvalues)
+        - edge_0_11_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_0_11_theta_values.csv (phase angles)
+        - edge_0_11_omega_values.csv (natural frequencies)
+        - edge_0_11_network_W.csv (adjacency matrix)
+      Kc_new = 0.3570
+      Delta = -0.0390
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.1466
+      Correct: True
+
+   [9/45] Testing edge (1, 4)...
+      Saving data for edge (1, 4) to CSV files...
+      Saved CSV files for edge_1_4:
+        - edge_1_4_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_1_4_eigenvalues.csv (all eigenvalues)
+        - edge_1_4_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_1_4_theta_values.csv (phase angles)
+        - edge_1_4_omega_values.csv (natural frequencies)
+        - edge_1_4_network_W.csv (adjacency matrix)
+      Kc_new = 0.3950
+      Delta = -0.0010
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0057
+      Correct: True
+
+   [10/45] Testing edge (1, 5)...
+      Saving data for edge (1, 5) to CSV files...
+      Saved CSV files for edge_1_5:
+        - edge_1_5_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_1_5_eigenvalues.csv (all eigenvalues)
+        - edge_1_5_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_1_5_theta_values.csv (phase angles)
+        - edge_1_5_omega_values.csv (natural frequencies)
+        - edge_1_5_network_W.csv (adjacency matrix)
+      Kc_new = 0.3920
+      Delta = -0.0040
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0305
+      Correct: True
+
+   [11/45] Testing edge (1, 6)...
+      Saving data for edge (1, 6) to CSV files...
+      Saved CSV files for edge_1_6:
+        - edge_1_6_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_1_6_eigenvalues.csv (all eigenvalues)
+        - edge_1_6_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_1_6_theta_values.csv (phase angles)
+        - edge_1_6_omega_values.csv (natural frequencies)
+        - edge_1_6_network_W.csv (adjacency matrix)
+      Kc_new = 0.3890
+      Delta = -0.0070
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0232
+      Correct: True
+
+   [12/45] Testing edge (1, 7)...
+      Saving data for edge (1, 7) to CSV files...
+      Saved CSV files for edge_1_7:
+        - edge_1_7_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_1_7_eigenvalues.csv (all eigenvalues)
+        - edge_1_7_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_1_7_theta_values.csv (phase angles)
+        - edge_1_7_omega_values.csv (natural frequencies)
+        - edge_1_7_network_W.csv (adjacency matrix)
+      Kc_new = 0.3950
+      Delta = -0.0010
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0057
+      Correct: True
+
+   [13/45] Testing edge (1, 8)...
+      Saving data for edge (1, 8) to CSV files...
+      Saved CSV files for edge_1_8:
+        - edge_1_8_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_1_8_eigenvalues.csv (all eigenvalues)
+        - edge_1_8_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_1_8_theta_values.csv (phase angles)
+        - edge_1_8_omega_values.csv (natural frequencies)
+        - edge_1_8_network_W.csv (adjacency matrix)
+      Kc_new = 0.3890
+      Delta = -0.0070
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0496
+      Correct: True
+
+   [14/45] Testing edge (1, 9)...
+      Saving data for edge (1, 9) to CSV files...
+      Saved CSV files for edge_1_9:
+        - edge_1_9_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_1_9_eigenvalues.csv (all eigenvalues)
+        - edge_1_9_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_1_9_theta_values.csv (phase angles)
+        - edge_1_9_omega_values.csv (natural frequencies)
+        - edge_1_9_network_W.csv (adjacency matrix)
+      Kc_new = 0.3630
+      Delta = -0.0330
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.3277
+      Correct: True
+
+   [15/45] Testing edge (1, 10)...
+      Saving data for edge (1, 10) to CSV files...
+      Saved CSV files for edge_1_10:
+        - edge_1_10_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_1_10_eigenvalues.csv (all eigenvalues)
+        - edge_1_10_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_1_10_theta_values.csv (phase angles)
+        - edge_1_10_omega_values.csv (natural frequencies)
+        - edge_1_10_network_W.csv (adjacency matrix)
+      Kc_new = 0.3830
+      Delta = -0.0130
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0997
+      Correct: True
+
+   [16/45] Testing edge (1, 11)...
+      Saving data for edge (1, 11) to CSV files...
+      Saved CSV files for edge_1_11:
+        - edge_1_11_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_1_11_eigenvalues.csv (all eigenvalues)
+        - edge_1_11_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_1_11_theta_values.csv (phase angles)
+        - edge_1_11_omega_values.csv (natural frequencies)
+        - edge_1_11_network_W.csv (adjacency matrix)
+      Kc_new = 0.3730
+      Delta = -0.0230
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.1739
+      Correct: True
+
+   [17/45] Testing edge (2, 4)...
+      Saving data for edge (2, 4) to CSV files...
+      Saved CSV files for edge_2_4:
+        - edge_2_4_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_2_4_eigenvalues.csv (all eigenvalues)
+        - edge_2_4_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_2_4_theta_values.csv (phase angles)
+        - edge_2_4_omega_values.csv (natural frequencies)
+        - edge_2_4_network_W.csv (adjacency matrix)
+      Kc_new = 0.3890
+      Delta = -0.0070
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0428
+      Correct: True
+
+   [18/45] Testing edge (2, 5)...
+      Saving data for edge (2, 5) to CSV files...
+      Saved CSV files for edge_2_5:
+        - edge_2_5_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_2_5_eigenvalues.csv (all eigenvalues)
+        - edge_2_5_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_2_5_theta_values.csv (phase angles)
+        - edge_2_5_omega_values.csv (natural frequencies)
+        - edge_2_5_network_W.csv (adjacency matrix)
+      Kc_new = 0.3880
+      Delta = -0.0080
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0508
+      Correct: True
+
+   [19/45] Testing edge (2, 6)...
+      Saving data for edge (2, 6) to CSV files...
+      Saved CSV files for edge_2_6:
+        - edge_2_6_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_2_6_eigenvalues.csv (all eigenvalues)
+        - edge_2_6_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_2_6_theta_values.csv (phase angles)
+        - edge_2_6_omega_values.csv (natural frequencies)
+        - edge_2_6_network_W.csv (adjacency matrix)
+      Kc_new = 0.4020
+      Delta = 0.0060
       Braess (actual): True
       Braess (predicted): True
-      k'(0) = 0.0111
+      k'(0) = 0.0222
       Correct: True
       >>> BRAESS PARADOX DETECTED! <<<
-      Saved: braess_output/edge_0_8_overlay.png
-      Saved: braess_output/edge_0_8_network.png
 
-   [6/28] Testing edge (0, 9)...
-      Kc_new = 0.4000
-      Delta = -0.1600
+   [20/45] Testing edge (2, 8)...
+      Saving data for edge (2, 8) to CSV files...
+      Saved CSV files for edge_2_8:
+        - edge_2_8_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_2_8_eigenvalues.csv (all eigenvalues)
+        - edge_2_8_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_2_8_theta_values.csv (phase angles)
+        - edge_2_8_omega_values.csv (natural frequencies)
+        - edge_2_8_network_W.csv (adjacency matrix)
+      Kc_new = 0.3780
+      Delta = -0.0180
       Braess (actual): False
       Braess (predicted): False
-      k'(0) = -0.1341
+      k'(0) = -0.1182
       Correct: True
 
-   [7/28] Testing edge (1, 4)...
-      Kc_new = 0.5600
-      Delta = N/A
-      Braess (actual): False
-      Braess (predicted): True
-      k'(0) = 0.0029
-      Correct: False
-
-   [8/28] Testing edge (1, 5)...
-      Kc_new = 0.5600
-      Delta = N/A
+   [21/45] Testing edge (2, 9)...
+      Saving data for edge (2, 9) to CSV files...
+      Saved CSV files for edge_2_9:
+        - edge_2_9_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_2_9_eigenvalues.csv (all eigenvalues)
+        - edge_2_9_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_2_9_theta_values.csv (phase angles)
+        - edge_2_9_omega_values.csv (natural frequencies)
+        - edge_2_9_network_W.csv (adjacency matrix)
+      Kc_new = 0.3630
+      Delta = -0.0330
       Braess (actual): False
       Braess (predicted): False
-      k'(0) = -0.0149
+      k'(0) = -0.2113
       Correct: True
 
-   [9/28] Testing edge (1, 6)...
-      Kc_new = 0.5600
-      Delta = N/A
+   [22/45] Testing edge (2, 10)...
+      Saving data for edge (2, 10) to CSV files...
+      Saved CSV files for edge_2_10:
+        - edge_2_10_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_2_10_eigenvalues.csv (all eigenvalues)
+        - edge_2_10_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_2_10_theta_values.csv (phase angles)
+        - edge_2_10_omega_values.csv (natural frequencies)
+        - edge_2_10_network_W.csv (adjacency matrix)
+      Kc_new = 0.3680
+      Delta = -0.0280
       Braess (actual): False
       Braess (predicted): False
-      k'(0) = -0.0420
+      k'(0) = -0.1801
       Correct: True
 
-   [10/28] Testing edge (1, 7)...
-      Kc_new = 0.5600
-      Delta = N/A
-      Braess (actual): False
-      Braess (predicted): True
-      k'(0) = 0.0042
-      Correct: False
-
-   [11/28] Testing edge (1, 8)...
-      Kc_new = 0.5600
-      Delta = N/A
-      Braess (actual): False
-      Braess (predicted): False
-      k'(0) = -0.0027
-      Correct: True
-
-   [12/28] Testing edge (1, 9)...
-      Kc_new = 0.4300
-      Delta = -0.1300
+   [23/45] Testing edge (2, 11)...
+      Saving data for edge (2, 11) to CSV files...
+      Saved CSV files for edge_2_11:
+        - edge_2_11_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_2_11_eigenvalues.csv (all eigenvalues)
+        - edge_2_11_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_2_11_theta_values.csv (phase angles)
+        - edge_2_11_omega_values.csv (natural frequencies)
+        - edge_2_11_network_W.csv (adjacency matrix)
+      Kc_new = 0.3600
+      Delta = -0.0360
       Braess (actual): False
       Braess (predicted): False
-      k'(0) = -0.0751
+      k'(0) = -0.0881
       Correct: True
 
-   [13/28] Testing edge (2, 5)...
-      Kc_new = 0.5600
-      Delta = N/A
+   [24/45] Testing edge (3, 6)...
+      Saving data for edge (3, 6) to CSV files...
+      Saved CSV files for edge_3_6:
+        - edge_3_6_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_3_6_eigenvalues.csv (all eigenvalues)
+        - edge_3_6_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_3_6_theta_values.csv (phase angles)
+        - edge_3_6_omega_values.csv (natural frequencies)
+        - edge_3_6_network_W.csv (adjacency matrix)
+      Kc_new = 0.3760
+      Delta = -0.0200
       Braess (actual): False
       Braess (predicted): False
-      k'(0) = -0.1692
+      k'(0) = -0.0746
       Correct: True
 
-   [14/28] Testing edge (2, 6)...
-      Kc_new = 0.5600
-      Delta = N/A
-      Braess (actual): False
-      Braess (predicted): False
-      k'(0) = -0.0081
-      Correct: True
-
-   [15/28] Testing edge (2, 7)...
-      Kc_new = 0.5500
-      Delta = -0.0100
-      Braess (actual): False
-      Braess (predicted): False
-      k'(0) = -0.1251
-      Correct: True
-
-   [16/28] Testing edge (2, 8)...
-      Kc_new = 0.5700
-      Delta = 0.0100
+   [25/45] Testing edge (3, 7)...
+      Saving data for edge (3, 7) to CSV files...
+      Saved CSV files for edge_3_7:
+        - edge_3_7_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_3_7_eigenvalues.csv (all eigenvalues)
+        - edge_3_7_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_3_7_theta_values.csv (phase angles)
+        - edge_3_7_omega_values.csv (natural frequencies)
+        - edge_3_7_network_W.csv (adjacency matrix)
+      Kc_new = 0.3990
+      Delta = 0.0030
       Braess (actual): True
-      Braess (predicted): False
-      k'(0) = -0.0285
-      Correct: False
+      Braess (predicted): True
+      k'(0) = 0.0178
+      Correct: True
       >>> BRAESS PARADOX DETECTED! <<<
-      Saved: braess_output/edge_2_8_overlay.png
-      Saved: braess_output/edge_2_8_network.png
 
-   [17/28] Testing edge (2, 9)...
-      Kc_new = 0.4000
-      Delta = -0.1600
+   [26/45] Testing edge (3, 8)...
+      Saving data for edge (3, 8) to CSV files...
+      Saved CSV files for edge_3_8:
+        - edge_3_8_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_3_8_eigenvalues.csv (all eigenvalues)
+        - edge_3_8_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_3_8_theta_values.csv (phase angles)
+        - edge_3_8_omega_values.csv (natural frequencies)
+        - edge_3_8_network_W.csv (adjacency matrix)
+      Kc_new = 0.3980
+      Delta = 0.0020
+      Braess (actual): True
+      Braess (predicted): True
+      k'(0) = 0.0185
+      Correct: True
+      >>> BRAESS PARADOX DETECTED! <<<
+
+   [27/45] Testing edge (3, 9)...
+      Saving data for edge (3, 9) to CSV files...
+      Saved CSV files for edge_3_9:
+        - edge_3_9_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_3_9_eigenvalues.csv (all eigenvalues)
+        - edge_3_9_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_3_9_theta_values.csv (phase angles)
+        - edge_3_9_omega_values.csv (natural frequencies)
+        - edge_3_9_network_W.csv (adjacency matrix)
+      Kc_new = 0.3740
+      Delta = -0.0220
       Braess (actual): False
       Braess (predicted): False
-      k'(0) = -0.1942
+      k'(0) = -0.2250
       Correct: True
 
-   [18/28] Testing edge (3, 6)...
-      Kc_new = 0.5600
+   [28/45] Testing edge (3, 10)...
+      Saving data for edge (3, 10) to CSV files...
+      Saved CSV files for edge_3_10:
+        - edge_3_10_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_3_10_eigenvalues.csv (all eigenvalues)
+        - edge_3_10_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_3_10_theta_values.csv (phase angles)
+        - edge_3_10_omega_values.csv (natural frequencies)
+        - edge_3_10_network_W.csv (adjacency matrix)
+      Kc_new = 0.3960
       Delta = N/A
       Braess (actual): False
+      Braess (predicted): True
+      k'(0) = 0.0069
+      Correct: False
+
+   [29/45] Testing edge (3, 11)...
+      Saving data for edge (3, 11) to CSV files...
+      Saved CSV files for edge_3_11:
+        - edge_3_11_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_3_11_eigenvalues.csv (all eigenvalues)
+        - edge_3_11_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_3_11_theta_values.csv (phase angles)
+        - edge_3_11_omega_values.csv (natural frequencies)
+        - edge_3_11_network_W.csv (adjacency matrix)
+      Kc_new = 0.3840
+      Delta = -0.0120
+      Braess (actual): False
       Braess (predicted): False
-      k'(0) = -0.1250
+      k'(0) = -0.1211
       Correct: True
 
-   [19/28] Testing edge (3, 7)...
-      Kc_new = 0.5600
+   [30/45] Testing edge (4, 6)...
+      Saving data for edge (4, 6) to CSV files...
+      Saved CSV files for edge_4_6:
+        - edge_4_6_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_4_6_eigenvalues.csv (all eigenvalues)
+        - edge_4_6_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_4_6_theta_values.csv (phase angles)
+        - edge_4_6_omega_values.csv (natural frequencies)
+        - edge_4_6_network_W.csv (adjacency matrix)
+      Kc_new = 0.3820
+      Delta = -0.0140
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0569
+      Correct: True
+
+   [31/45] Testing edge (4, 8)...
+      Saving data for edge (4, 8) to CSV files...
+      Saved CSV files for edge_4_8:
+        - edge_4_8_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_4_8_eigenvalues.csv (all eigenvalues)
+        - edge_4_8_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_4_8_theta_values.csv (phase angles)
+        - edge_4_8_omega_values.csv (natural frequencies)
+        - edge_4_8_network_W.csv (adjacency matrix)
+      Kc_new = 0.3920
+      Delta = -0.0040
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0214
+      Correct: True
+
+   [32/45] Testing edge (4, 9)...
+      Saving data for edge (4, 9) to CSV files...
+      Saved CSV files for edge_4_9:
+        - edge_4_9_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_4_9_eigenvalues.csv (all eigenvalues)
+        - edge_4_9_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_4_9_theta_values.csv (phase angles)
+        - edge_4_9_omega_values.csv (natural frequencies)
+        - edge_4_9_network_W.csv (adjacency matrix)
+      Kc_new = 0.3700
+      Delta = -0.0260
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.2728
+      Correct: True
+
+   [33/45] Testing edge (4, 10)...
+      Saving data for edge (4, 10) to CSV files...
+      Saved CSV files for edge_4_10:
+        - edge_4_10_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_4_10_eigenvalues.csv (all eigenvalues)
+        - edge_4_10_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_4_10_theta_values.csv (phase angles)
+        - edge_4_10_omega_values.csv (natural frequencies)
+        - edge_4_10_network_W.csv (adjacency matrix)
+      Kc_new = 0.3870
+      Delta = -0.0090
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.0590
+      Correct: True
+
+   [34/45] Testing edge (4, 11)...
+      Saving data for edge (4, 11) to CSV files...
+      Saved CSV files for edge_4_11:
+        - edge_4_11_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_4_11_eigenvalues.csv (all eigenvalues)
+        - edge_4_11_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_4_11_theta_values.csv (phase angles)
+        - edge_4_11_omega_values.csv (natural frequencies)
+        - edge_4_11_network_W.csv (adjacency matrix)
+      Kc_new = 0.3790
+      Delta = -0.0170
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.1237
+      Correct: True
+
+   [35/45] Testing edge (5, 7)...
+      Saving data for edge (5, 7) to CSV files...
+      Saved CSV files for edge_5_7:
+        - edge_5_7_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_5_7_eigenvalues.csv (all eigenvalues)
+        - edge_5_7_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_5_7_theta_values.csv (phase angles)
+        - edge_5_7_omega_values.csv (natural frequencies)
+        - edge_5_7_network_W.csv (adjacency matrix)
+      Kc_new = 0.3980
+      Delta = 0.0020
+      Braess (actual): True
+      Braess (predicted): True
+      k'(0) = 0.0080
+      Correct: True
+      >>> BRAESS PARADOX DETECTED! <<<
+
+   [36/45] Testing edge (5, 9)...
+      Saving data for edge (5, 9) to CSV files...
+      Saved CSV files for edge_5_9:
+        - edge_5_9_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_5_9_eigenvalues.csv (all eigenvalues)
+        - edge_5_9_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_5_9_theta_values.csv (phase angles)
+        - edge_5_9_omega_values.csv (natural frequencies)
+        - edge_5_9_network_W.csv (adjacency matrix)
+      Kc_new = 0.3700
+      Delta = -0.0260
+      Braess (actual): False
+      Braess (predicted): False
+      k'(0) = -0.2119
+      Correct: True
+
+   [37/45] Testing edge (5, 10)...
+      Saving data for edge (5, 10) to CSV files...
+      Saved CSV files for edge_5_10:
+        - edge_5_10_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_5_10_eigenvalues.csv (all eigenvalues)
+        - edge_5_10_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_5_10_theta_values.csv (phase angles)
+        - edge_5_10_omega_values.csv (natural frequencies)
+        - edge_5_10_network_W.csv (adjacency matrix)
+      Kc_new = 0.3960
       Delta = N/A
       Braess (actual): False
-      Braess (predicted): False
-      k'(0) = -0.0016
-      Correct: True
+      Braess (predicted): True
+      k'(0) = 0.0052
+      Correct: False
 
-   [20/28] Testing edge (3, 8)...
-      Kc_new = 0.5500
-      Delta = -0.0100
+   [38/45] Testing edge (5, 11)...
+      Saving data for edge (5, 11) to CSV files...
+      Saved CSV files for edge_5_11:
+        - edge_5_11_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_5_11_eigenvalues.csv (all eigenvalues)
+        - edge_5_11_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_5_11_theta_values.csv (phase angles)
+        - edge_5_11_omega_values.csv (natural frequencies)
+        - edge_5_11_network_W.csv (adjacency matrix)
+      Kc_new = 0.3840
+      Delta = -0.0120
       Braess (actual): False
       Braess (predicted): False
-      k'(0) = -0.0697
+      k'(0) = -0.1054
       Correct: True
 
-   [21/28] Testing edge (3, 9)...
-      Kc_new = 0.4500
-      Delta = -0.1100
+   [39/45] Testing edge (6, 8)...
+      Saving data for edge (6, 8) to CSV files...
+      Saved CSV files for edge_6_8:
+        - edge_6_8_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_6_8_eigenvalues.csv (all eigenvalues)
+        - edge_6_8_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_6_8_theta_values.csv (phase angles)
+        - edge_6_8_omega_values.csv (natural frequencies)
+        - edge_6_8_network_W.csv (adjacency matrix)
+      Kc_new = 0.3720
+      Delta = -0.0240
       Braess (actual): False
       Braess (predicted): False
-      k'(0) = -0.0198
+      k'(0) = -0.1354
       Correct: True
 
-   [22/28] Testing edge (4, 6)...
-      Kc_new = 0.5600
-      Delta = N/A
+   [40/45] Testing edge (6, 10)...
+      Saving data for edge (6, 10) to CSV files...
+      Saved CSV files for edge_6_10:
+        - edge_6_10_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_6_10_eigenvalues.csv (all eigenvalues)
+        - edge_6_10_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_6_10_theta_values.csv (phase angles)
+        - edge_6_10_omega_values.csv (natural frequencies)
+        - edge_6_10_network_W.csv (adjacency matrix)
+      Kc_new = 0.3650
+      Delta = -0.0310
       Braess (actual): False
       Braess (predicted): False
-      k'(0) = -0.0194
+      k'(0) = -0.2030
       Correct: True
 
-   [23/28] Testing edge (4, 8)...
-      Kc_new = 0.5600
-      Delta = N/A
+   [41/45] Testing edge (6, 11)...
+      Saving data for edge (6, 11) to CSV files...
+      Saved CSV files for edge_6_11:
+        - edge_6_11_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_6_11_eigenvalues.csv (all eigenvalues)
+        - edge_6_11_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_6_11_theta_values.csv (phase angles)
+        - edge_6_11_omega_values.csv (natural frequencies)
+        - edge_6_11_network_W.csv (adjacency matrix)
+      Kc_new = 0.3510
+      Delta = -0.0450
       Braess (actual): False
       Braess (predicted): False
-      k'(0) = -0.0020
+      k'(0) = -0.1867
       Correct: True
 
-   [24/28] Testing edge (4, 9)...
-      Kc_new = 0.4200
-      Delta = -0.1400
+   [42/45] Testing edge (7, 9)...
+      Saving data for edge (7, 9) to CSV files...
+      Saved CSV files for edge_7_9:
+        - edge_7_9_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_7_9_eigenvalues.csv (all eigenvalues)
+        - edge_7_9_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_7_9_theta_values.csv (phase angles)
+        - edge_7_9_omega_values.csv (natural frequencies)
+        - edge_7_9_network_W.csv (adjacency matrix)
+      Kc_new = 0.3630
+      Delta = -0.0330
       Braess (actual): False
       Braess (predicted): False
-      k'(0) = -0.1503
+      k'(0) = -0.2571
       Correct: True
 
-   [25/28] Testing edge (5, 7)...
-      Kc_new = 0.5600
-      Delta = N/A
+   [43/45] Testing edge (7, 11)...
+      Saving data for edge (7, 11) to CSV files...
+      Saved CSV files for edge_7_11:
+        - edge_7_11_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_7_11_eigenvalues.csv (all eigenvalues)
+        - edge_7_11_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_7_11_theta_values.csv (phase angles)
+        - edge_7_11_omega_values.csv (natural frequencies)
+        - edge_7_11_network_W.csv (adjacency matrix)
+      Kc_new = 0.3770
+      Delta = -0.0190
       Braess (actual): False
       Braess (predicted): False
-      k'(0) = -0.0036
+      k'(0) = -0.1064
       Correct: True
 
-   [26/28] Testing edge (5, 8)...
-      Kc_new = 0.5500
-      Delta = -0.0100
+   [44/45] Testing edge (8, 10)...
+      Saving data for edge (8, 10) to CSV files...
+      Saved CSV files for edge_8_10:
+        - edge_8_10_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_8_10_eigenvalues.csv (all eigenvalues)
+        - edge_8_10_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_8_10_theta_values.csv (phase angles)
+        - edge_8_10_omega_values.csv (natural frequencies)
+        - edge_8_10_network_W.csv (adjacency matrix)
+      Kc_new = 0.3940
+      Delta = -0.0020
       Braess (actual): False
       Braess (predicted): False
-      k'(0) = -0.0677
+      k'(0) = -0.0097
       Correct: True
 
-   [27/28] Testing edge (5, 9)...
-      Kc_new = 0.4600
-      Delta = -0.1000
-      Braess (actual): False
-      Braess (predicted): False
-      k'(0) = -0.0385
+   [45/45] Testing edge (9, 11)...
+      Saving data for edge (9, 11) to CSV files...
+      Saved CSV files for edge_9_11:
+        - edge_9_11_continuation_main.csv (K, r, theta, eigenvalue summary)
+        - edge_9_11_eigenvalues.csv (all eigenvalues)
+        - edge_9_11_eigenvalues_no_gauge.csv (eigenvalues without gauge mode)
+        - edge_9_11_theta_values.csv (phase angles)
+        - edge_9_11_omega_values.csv (natural frequencies)
+        - edge_9_11_network_W.csv (adjacency matrix)
+      Kc_new = 0.3980
+      Delta = 0.0020
+      Braess (actual): True
+      Braess (predicted): True
+      k'(0) = 0.0257
       Correct: True
-
-   [28/28] Testing edge (6, 9)...
-      Kc_new = 0.4000
-      Delta = -0.1600
-      Braess (actual): False
-      Braess (predicted): False
-      k'(0) = -0.1914
-      Correct: True
+      >>> BRAESS PARADOX DETECTED! <<<
 
 ======================================================================
 SUMMARY
 ======================================================================
 
-Total edges tested: 28
-Braess edges (actual): 2
-Braess edges (predicted): 3
-Correct predictions: 25
-Accuracy: 89.3%
+Total edges tested: 45
+Braess edges (actual): 5
+Braess edges (predicted): 7
+Correct predictions: 43
+Accuracy: 95.6%
 
 Detailed results:
 Edge       Kc_base    Kc_new     Delta      Actual     Predicted  k_prime   
 ----------------------------------------------------------------------
-(0, 3)     0.5600     0.5600     N/A        No         No         -0.1166   
-(0, 4)     0.5600     0.5600     N/A        No         No         -0.0061   
-(0, 5)     0.5600     0.5600     N/A        No         No         -0.1023   
-(0, 7)     0.5600     0.5500     -0.0100    No         No         -0.0618   
-(0, 8)     0.5600     0.5700     0.0100     Yes        Yes        0.0111    
-(0, 9)     0.5600     0.4000     -0.1600    No         No         -0.1341   
-(1, 4)     0.5600     0.5600     N/A        No         Yes        0.0029    
-(1, 5)     0.5600     0.5600     N/A        No         No         -0.0149   
-(1, 6)     0.5600     0.5600     N/A        No         No         -0.0420   
-(1, 7)     0.5600     0.5600     N/A        No         Yes        0.0042    
-(1, 8)     0.5600     0.5600     N/A        No         No         -0.0027   
-(1, 9)     0.5600     0.4300     -0.1300    No         No         -0.0751   
-(2, 5)     0.5600     0.5600     N/A        No         No         -0.1692   
-(2, 6)     0.5600     0.5600     N/A        No         No         -0.0081   
-(2, 7)     0.5600     0.5500     -0.0100    No         No         -0.1251   
-(2, 8)     0.5600     0.5700     0.0100     Yes        No         -0.0285   
-(2, 9)     0.5600     0.4000     -0.1600    No         No         -0.1942   
-(3, 6)     0.5600     0.5600     N/A        No         No         -0.1250   
-(3, 7)     0.5600     0.5600     N/A        No         No         -0.0016   
-(3, 8)     0.5600     0.5500     -0.0100    No         No         -0.0697   
-(3, 9)     0.5600     0.4500     -0.1100    No         No         -0.0198   
-(4, 6)     0.5600     0.5600     N/A        No         No         -0.0194   
-(4, 8)     0.5600     0.5600     N/A        No         No         -0.0020   
-(4, 9)     0.5600     0.4200     -0.1400    No         No         -0.1503   
-(5, 7)     0.5600     0.5600     N/A        No         No         -0.0036   
-(5, 8)     0.5600     0.5500     -0.0100    No         No         -0.0677   
-(5, 9)     0.5600     0.4600     -0.1000    No         No         -0.0385   
-(6, 9)     0.5600     0.4000     -0.1600    No         No         -0.1914   
+(0, 3)     0.3960     0.3840     -0.0120    No         No         -0.0534   
+(0, 4)     0.3960     0.3870     -0.0090    No         No         -0.0499   
+(0, 5)     0.3960     0.3830     -0.0130    No         No         -0.0710   
+(0, 7)     0.3960     0.3850     -0.0110    No         No         -0.0597   
+(0, 8)     0.3960     0.3760     -0.0200    No         No         -0.1259   
+(0, 9)     0.3960     0.3630     -0.0330    No         No         -0.2967   
+(0, 10)    0.3960     0.3670     -0.0290    No         No         -0.1916   
+(0, 11)    0.3960     0.3570     -0.0390    No         No         -0.1466   
+(1, 4)     0.3960     0.3950     -0.0010    No         No         -0.0057   
+(1, 5)     0.3960     0.3920     -0.0040    No         No         -0.0305   
+(1, 6)     0.3960     0.3890     -0.0070    No         No         -0.0232   
+(1, 7)     0.3960     0.3950     -0.0010    No         No         -0.0057   
+(1, 8)     0.3960     0.3890     -0.0070    No         No         -0.0496   
+(1, 9)     0.3960     0.3630     -0.0330    No         No         -0.3277   
+(1, 10)    0.3960     0.3830     -0.0130    No         No         -0.0997   
+(1, 11)    0.3960     0.3730     -0.0230    No         No         -0.1739   
+(2, 4)     0.3960     0.3890     -0.0070    No         No         -0.0428   
+(2, 5)     0.3960     0.3880     -0.0080    No         No         -0.0508   
+(2, 6)     0.3960     0.4020     0.0060     Yes        Yes        0.0222    
+(2, 8)     0.3960     0.3780     -0.0180    No         No         -0.1182   
+(2, 9)     0.3960     0.3630     -0.0330    No         No         -0.2113   
+(2, 10)    0.3960     0.3680     -0.0280    No         No         -0.1801   
+(2, 11)    0.3960     0.3600     -0.0360    No         No         -0.0881   
+(3, 6)     0.3960     0.3760     -0.0200    No         No         -0.0746   
+(3, 7)     0.3960     0.3990     0.0030     Yes        Yes        0.0178    
+(3, 8)     0.3960     0.3980     0.0020     Yes        Yes        0.0185    
+(3, 9)     0.3960     0.3740     -0.0220    No         No         -0.2250   
+(3, 10)    0.3960     0.3960     N/A        No         Yes        0.0069    
+(3, 11)    0.3960     0.3840     -0.0120    No         No         -0.1211   
+(4, 6)     0.3960     0.3820     -0.0140    No         No         -0.0569   
+(4, 8)     0.3960     0.3920     -0.0040    No         No         -0.0214   
+(4, 9)     0.3960     0.3700     -0.0260    No         No         -0.2728   
+(4, 10)    0.3960     0.3870     -0.0090    No         No         -0.0590   
+(4, 11)    0.3960     0.3790     -0.0170    No         No         -0.1237   
+(5, 7)     0.3960     0.3980     0.0020     Yes        Yes        0.0080    
+(5, 9)     0.3960     0.3700     -0.0260    No         No         -0.2119   
+(5, 10)    0.3960     0.3960     N/A        No         Yes        0.0052    
+(5, 11)    0.3960     0.3840     -0.0120    No         No         -0.1054   
+(6, 8)     0.3960     0.3720     -0.0240    No         No         -0.1354   
+(6, 10)    0.3960     0.3650     -0.0310    No         No         -0.2030   
+(6, 11)    0.3960     0.3510     -0.0450    No         No         -0.1867   
+(7, 9)     0.3960     0.3630     -0.0330    No         No         -0.2571   
+(7, 11)    0.3960     0.3770     -0.0190    No         No         -0.1064   
+(8, 10)    0.3960     0.3940     -0.0020    No         No         -0.0097   
+(9, 11)    0.3960     0.3980     0.0020     Yes        Yes        0.0257    
 
 ======================================================================
 
 All plots saved to: braess_output/
 Full results saved to: braess_output/analysis_results.txt
 ======================================================================
+
+Generating scatter plots...
+Scatter plots saved.
